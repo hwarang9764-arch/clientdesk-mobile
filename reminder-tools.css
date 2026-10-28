@@ -1,4 +1,4 @@
-/* Client Desk Mobile v1.2.10 — popup notification preferences */
+/* Client Desk Mobile v1.2.11 — popup notification preferences */
 #eventDialog .cd-reminders{margin:13px 0 4px;padding:13px;border:1px solid #dfdbea;border-radius:12px;background:#f5f2fc;}
 #eventDialog .cd-reminders-title{font-weight:750;font-size:13px;}
 #eventDialog .cd-reminders-help{margin:5px 0 12px;color:#78728e;font-size:11px;line-height:1.5;}
@@ -11,3 +11,14 @@
 :root[data-theme="dark"] #eventDialog .cd-reminders-help{color:#c4bdd9;}
 :root[data-theme="dark"] #eventDialog .cd-reminders-choice{background:#353448;color:#eee8fc;border-color:#55536f;}
 :root[data-theme="dark"] #eventDialog .cd-reminders-info{color:#c9bcff;}
+
+/* v1.2.11: the optional reminders section scrolls with the other event fields. */
+#eventDialog #eventForm > .form-grid > .cd-reminders{
+  position:static!important;
+  inset:auto!important;
+  flex:0 0 auto;
+  width:100%;
+  box-sizing:border-box;
+  margin-top:12px;
+  margin-bottom:12px;
+}

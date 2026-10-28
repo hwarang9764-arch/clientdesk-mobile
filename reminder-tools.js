@@ -1,4 +1,4 @@
-/* Client Desk Mobile v1.2.10 — Google Calendar popup reminders. */
+/* Client Desk Mobile v1.2.11 — Google Calendar popup reminders. */
 (()=>{
  'use strict';
  const dialog=document.getElementById('eventDialog');
@@ -15,8 +15,13 @@
  }
  box.append(grid);
  const message=document.createElement('p');message.className='cd-reminders-info';message.setAttribute('aria-live','polite');box.append(message);
+ // The notice belongs to the scrollable form content, after the color field.
+ // Keep only the header and save/delete action bar outside the scroller.
+ const scroller=form.querySelector(':scope > .form-grid');
  const actions=form.querySelector('.dialog-actions');
- if(actions)actions.before(box);else form.append(box);
+ if(scroller)scroller.append(box);
+ else if(actions)actions.before(box);
+ else form.append(box);
  const checks=[...grid.querySelectorAll('input')];
  let modified=false,epoch=0;
  const events=new Map();
@@ -87,6 +92,7 @@
  }
  async function syncOpen(){
    const id=++epoch;
+   if(scroller)scroller.scrollTop=0;
    const title=document.getElementById('eventModalTitle')?.textContent||'';
    modified=false;
    if(!title.includes('수정')){fill([60]);clickId='';return;}
