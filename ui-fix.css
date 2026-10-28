@@ -151,3 +151,74 @@
  #clientDialog .form-grid,#eventDialog .form-grid{padding:12px 16px 20px;}
  #clientDialog .dialog-actions,#eventDialog .dialog-actions{padding:12px 16px max(14px,env(safe-area-inset-bottom));}
 }
+
+/* v1.2.7 — client card: quick schedule action above status, right aligned. */
+#clientList .client-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+#clientList .client-card-head > div:first-child{
+  flex:1 1 auto;
+  min-width:0!important;
+}
+#clientList .client-card-head .company-name{
+  display:block;
+  max-width:100%!important;
+  margin:1px 0 0;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  overflow:hidden;
+}
+#clientList .client-card-head .company-sub{
+  display:block;
+  max-width:100%;
+  margin-top:9px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+#clientList .client-card-action-stack{
+  display:flex;
+  flex:0 0 86px;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  gap:6px;
+  min-width:0;
+}
+#clientList .client-card-action-stack > .client-quick-event{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-height:25px;
+  margin:0!important;
+  padding:4px 7px;
+  text-align:center;
+  border-radius:8px;
+  line-height:1.15;
+  white-space:nowrap;
+}
+#clientList .client-card-action-stack > .pill{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  width:100%;
+  max-width:none;
+  min-height:25px;
+  padding:5px 7px;
+  margin:0;
+  text-align:center;
+  line-height:1.15;
+  white-space:nowrap;
+}
+#clientList .client-card-action-stack > .client-quick-event:focus-visible{
+  outline:2px solid var(--purple);
+  outline-offset:2px;
+}
+@media(max-width:360px){
+  #clientList .client-card-action-stack{flex-basis:78px;gap:5px;}
+  #clientList .client-card-head{gap:7px;}
+}
