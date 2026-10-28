@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const VERSION='1.2.0';
+const VERSION='1.2.3';
 const $=id=>document.getElementById(id);
 const DEFAULT_COLUMNS=[['company','상호','text'],['industry','업종','select'],['ceo','대표자','text'],['phone','휴대폰번호','tel'],['email','이메일','email'],['fax','팩스','tel'],['address','주소','text'],['status','진행 상태','status'],['service','관리 서비스','text'],['start','계약 시작일','date'],['fee','월 관리비','currency'],['memo','메모','longtext']].map(([id,label,type])=>({id,label,type,width:160,hidden:false}));
 const DEFAULT_INDUSTRIES=['숙박','미용·뷰티','카페·음식점','소매·쇼핑','기타'];
@@ -137,6 +137,35 @@ function renderTrash(){
  if(!items.length){list.innerHTML='<div class="empty">휴지통이 비어 있습니다.</div>';return;}
  for(const item of items){const row=isClients?item.row:item;const stamp=isClients?item.deletedAt:item.extendedProperties?.private?.clientDeskTrashAt;const days=Math.max(0,7-Math.floor((Date.now()-Date.parse(stamp))/86400000));const card=document.createElement('article');card.className='trash-card';card.innerHTML=`<div class="trash-item-text"><strong>${safe(isClients?row.values.company||'이름 없는 거래처':row.summary||'제목 없는 일정')}</strong><small>삭제: ${safe(stamp?.slice(0,10)||'날짜 미상')} · 남은 기간 ${days}일</small></div><div class="trash-item-actions"><button type="button" class="soft-btn" data-restore="${safe(isClients?row.id:row.id)}">복원</button><button type="button" class="danger-link" data-purge="${safe(row.id)}">영구 삭제</button></div>`;list.append(card);}
 }
+// Copy enabled fields configured in the PC column manager, especially IDs and passwords.
+// Credentials are displayed only in a masked/abbreviated form; raw values are
+// read from the current record ONLY after an explicit tap on a copy button.
+const CREDENTIAL_COPY_SVG='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+function isSecretCopyColumn(col){return /(비밀번호|패스워드|암호|password|passwd|pwd|pw)/i.test(`${col.id} ${col.label}`);}
+function credentialCopyFields(row){
+ const columns=state.columns.filter(col=>col.copyEnabled && String(row.values?.[col.id]??'').length);
+ // The PC controls which columns get copy buttons. Do not independently
+ // expose disabled fields, and preserve the user's custom column order.
+ return columns.slice(0,6);
+}
+function credentialStrip(row){
+ const fields=credentialCopyFields(row);
+ if(!fields.length)return '';
+ return `<div class="credential-strip" aria-label="복사 가능한 거래처 정보">${fields.map(col=>{
+   const val=String(row.values[col.id]??'');
+   const secret=isSecretCopyColumn(col);
+   const display=secret?'••••••':safe(val.length>32?val.slice(0,29)+'…':val);
+   return `<div class="credential-item"><div class="credential-caption">${safe(col.label)}</div><div class="credential-value" title="${secret?'값 숨김':safe(val)}">${display}</div><button type="button" class="credential-copy" data-credential-row="${safe(row.id)}" data-credential-col="${safe(col.id)}" aria-label="${safe(col.label)} 복사" title="${safe(col.label)} 복사">${CREDENTIAL_COPY_SVG}<span>복사</span></button></div>`;
+ }).join('')}</div>`;
+}
+async function copyCredential(rowId,columnId){
+ const row=state.rows.find(r=>r.id===rowId),col=state.columns.find(c=>c.id===columnId);
+ if(!row||!col?.copyEnabled){notify('복사할 수 없는 항목입니다.');return;}
+ const value=String(row.values?.[columnId]??'');
+ if(!value){notify('복사할 값이 없습니다.');return;}
+ try{await navigator.clipboard.writeText(value);notify(`${col.label} 복사 완료`);}
+ catch(e){notify('복사 권한을 확인하세요.');}
+}
 function renderClients(){
  renderStats();
  const arr=state.rows.filter(r=>!r.demo).filter(r=>(statusFilter==='전체'||r.values.status===statusFilter)&&(!industryFilter||r.values.industry===industryFilter)&&(!search||Object.values(r.values).some(v=>String(v).toLowerCase().includes(search.toLowerCase()))));
@@ -150,7 +179,7 @@ function renderClients(){
   const v=r.values,phone=cleanPhone(v.phone);
   const card=document.createElement('article');card.className='client-card';card.dataset.row=r.id;
   card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-label',`${String(v.company||'이름 없는 거래처')} 수정`);
-  card.innerHTML=`<div class="client-card-head"><div style="min-width:0"><span class="company-name">${safe(v.company||'이름 없는 거래처')}</span><button type="button" class="client-quick-event" data-client-event="${safe(r.id)}">+ 일정</button><span class="company-sub">${safe(v.address||v.service||'주소 미등록')}</span></div><span class="pill ${v.status==='계약중'?'contract':v.status==='대기'?'wait':v.status==='종료'?'end':''}">${safe(v.status||'상태 미정')}</span></div><div class="card-info"><span class="pill">${safe(v.industry||'업종 미지정')}</span><span class="info">${safe(v.ceo||'대표자 미등록')}</span><span class="contact-group"><span class="info">${safe(v.phone||'연락처 미등록')}</span>${phone?`<a class="contact-action" href="tel:${phone}" aria-label="${safe(v.company||'거래처')} 전화 걸기" title="전화 걸기">${PHONE_SVG}<span>전화</span></a><a class="contact-action sms" href="sms:${phone}" aria-label="${safe(v.company||'거래처')} 문자 보내기" title="문자 보내기">${SMS_SVG}<span>문자</span></a>`:''}</span></div>`;
+  card.innerHTML=`<div class="client-card-head"><div style="min-width:0"><span class="company-name">${safe(v.company||'이름 없는 거래처')}</span><button type="button" class="client-quick-event" data-client-event="${safe(r.id)}">+ 일정</button><span class="company-sub">${safe(v.address||v.service||'주소 미등록')}</span></div><span class="pill ${v.status==='계약중'?'contract':v.status==='대기'?'wait':v.status==='종료'?'end':''}">${safe(v.status||'상태 미정')}</span></div><div class="card-info"><span class="pill">${safe(v.industry||'업종 미지정')}</span><span class="info">${safe(v.ceo||'대표자 미등록')}</span><span class="contact-group"><span class="info">${safe(v.phone||'연락처 미등록')}</span>${phone?`<a class="contact-action" href="tel:${phone}" aria-label="${safe(v.company||'거래처')} 전화 걸기" title="전화 걸기">${PHONE_SVG}<span>전화</span></a><a class="contact-action sms" href="sms:${phone}" aria-label="${safe(v.company||'거래처')} 문자 보내기" title="문자 보내기">${SMS_SVG}<span>문자</span></a>`:''}</span></div>${credentialStrip(r)}`;
   list.appendChild(card);
  }
 }
@@ -337,7 +366,21 @@ function eventDays(ev){
  return days.length?days:[start];
 }
 function eventDone(ev){return ev.extendedProperties?.private?.clientDeskDone==='1';}
-function eventsOn(date){return calendarEvents.filter(ev=>eventDays(ev).includes(date));}
+// Same priority as PC: unfinished entries above finished ones, with
+// chronological ordering preserved *within each group*.
+function calendarEventStartMs(ev){
+ const start=ev.start?.dateTime||ev.start?.date;
+ if(!start)return Number.POSITIVE_INFINITY;
+ const ms=Date.parse(ev.start?.date?start+'T00:00:00':start);
+ return Number.isFinite(ms)?ms:Number.POSITIVE_INFINITY;
+}
+function calendarPriorityOrder(a,b){
+ const doneA=eventDone(a),doneB=eventDone(b);
+ if(doneA!==doneB)return doneA?1:-1;
+ const msA=calendarEventStartMs(a),msB=calendarEventStartMs(b);
+ return msA-msB||String(a.summary||'').localeCompare(String(b.summary||''),'ko');
+}
+function eventsOn(date){return calendarEvents.filter(ev=>eventDays(ev).includes(date)).sort(calendarPriorityOrder);}
 function setCalendarExpanded(next){calendarExpanded=!!next;writeLocal(CALENDAR_MODE_KEY,calendarExpanded?'1':'0');renderCalendar();}
 async function cacheCalendar(){
  if(!db)return;
@@ -366,6 +409,7 @@ function renderCalendar(){
  const expandBtn=$('toggleCalendar');expandBtn.textContent=calendarExpanded?'달력 접기':'달력 펼치기';expandBtn.setAttribute('aria-expanded',String(calendarExpanded));
  $('calendarGrip').setAttribute('aria-label',calendarExpanded?'달력 접기':'달력 펼치기');
  const byDate=new Map();for(const ev of calendarEvents){for(const d of eventDays(ev)){if(!byDate.has(d))byDate.set(d,[]);byDate.get(d).push(ev);}}
+ for(const dayEvents of byDate.values())dayEvents.sort(calendarPriorityOrder);
  for(const wd of ['일','월','화','수','목','금','토']){const e=document.createElement('div');e.className='weekday';e.textContent=wd;grid.append(e);}
  const begin=new Date(calMonth.getFullYear(),calMonth.getMonth(),1-calMonth.getDay());
  for(let i=0;i<42;i++){
@@ -380,7 +424,7 @@ function renderCalendar(){
 }
 function renderDayEvents(){
  $('selectedDateLabel').textContent=selectedDay;$('dayEvents').replaceChildren();
- const arr=eventsOn(selectedDay).sort((a,b)=>(a.start?.dateTime||'').localeCompare(b.start?.dateTime||''));
+ const arr=eventsOn(selectedDay);
  if(!arr.length){$('dayEvents').innerHTML='<div class="empty">선택한 날짜의 일정이 없습니다.<br>+ 일정 버튼으로 새 일정을 추가해 주세요.</div>';return;}
  for(const ev of arr){
   const div=document.createElement('div'),done=eventDone(ev);div.className='event-card'+(done?' completed':'');
@@ -421,7 +465,7 @@ function bind(){
  $('statusFilters').addEventListener('click',e=>{const b=e.target.closest('[data-status]');if(b){statusFilter=b.dataset.status;renderClients();}});
  $('industryFilter').addEventListener('change',e=>{industryFilter=e.target.value;renderClients();});
  $('clientSearch').addEventListener('input',e=>{search=e.target.value;renderClients();});
- $('clientList').addEventListener('click',e=>{const schedule=e.target.closest('[data-client-event]');if(schedule){openEventForClient(schedule.dataset.clientEvent);return;}if(e.target.closest('a,button'))return;const b=e.target.closest('[data-row]');if(b)openClient(b.dataset.row);});
+ $('clientList').addEventListener('click',e=>{const copy=e.target.closest('[data-credential-row]');if(copy){copyCredential(copy.dataset.credentialRow,copy.dataset.credentialCol).catch(onError);return;}const schedule=e.target.closest('[data-client-event]');if(schedule){openEventForClient(schedule.dataset.clientEvent);return;}if(e.target.closest('a,button'))return;const b=e.target.closest('[data-row]');if(b)openClient(b.dataset.row);});
  $('clientList').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-row]')){e.preventDefault();openClient(e.target.dataset.row);}});
  $('addClient').addEventListener('click',()=>openClient());
  $('clientForm').addEventListener('submit',e=>saveClient(e).catch(onError));

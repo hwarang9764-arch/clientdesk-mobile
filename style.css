@@ -62,3 +62,19 @@
 :root[data-theme="dark"] .status-line{background:#252b3a!important;border-color:#383e4f!important;color:#bbc2d3!important}
 :root[data-theme="dark"] .event-card-text small,:root[data-theme="dark"] .info,:root[data-theme="dark"] .company-sub{color:#adb5c8!important}
 :root[data-theme="dark"] .trash-item-actions .danger-link{color:#ff9ca9}
+
+/* v1.2.1: use the same recognisable trash-can pictogram as PC */
+.bottom-nav .nav-trash-icon{display:inline-flex;justify-content:center;align-items:center;width:26px;height:26px}
+.bottom-nav .nav-trash-icon svg{display:block;width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+/* v1.2.2: mobile client cards get PC-configured ID/PW copy controls. */
+.credential-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding-top:11px;margin-top:11px;border-top:1px solid var(--line)}
+.credential-item{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;gap:3px 6px;align-items:center;background:#f9f8fe;border:1px solid #eae6f8;border-radius:11px;padding:9px 7px 9px 10px;min-width:0}
+.credential-caption{grid-column:1;font-size:10px;color:var(--muted);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.credential-value{grid-column:1;font-size:12px;color:var(--text);font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none}
+.credential-copy{grid-column:2;grid-row:1/span 2;align-self:stretch;display:flex;justify-content:center;align-items:center;gap:3px;background:#ece7ff;color:#5949b6;border:1px solid #dfd7ff;border-radius:9px;padding:0 7px;min-height:37px;font-size:10px;font-weight:850}
+.credential-copy svg{flex:none;width:14px;height:14px}
+.credential-copy:active{transform:scale(.97)}
+:root[data-theme="dark"] .credential-item{background:#2e3444;border-color:#424859}
+:root[data-theme="dark"] .credential-copy{background:#49416a;color:#e6dcff;border-color:#6b5c96}
+@media(max-width:350px){.credential-strip{grid-template-columns:1fr}}
