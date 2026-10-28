@@ -1,0 +1,153 @@
+/* Client Desk Mobile v1.2.4 — appearance and modal interaction improvements */
+
+/* Calendar: remove light underlays that shine through out-of-month cells. */
+:root[data-theme="dark"] #monthGrid.month-grid{
+  background:#232938!important;
+  border:1px solid #434a5e!important;
+  box-shadow:0 8px 26px rgba(0,0,0,.14);
+}
+:root[data-theme="dark"] #monthGrid .weekday{
+  background:#2d3344!important;
+  color:#bdc4d7!important;
+  border-bottom:1px solid #41495a;
+}
+:root[data-theme="dark"] #monthGrid .weekday:first-child{color:#f2abb5!important;}
+:root[data-theme="dark"] #monthGrid .weekday:nth-child(7){color:#aabef5!important;}
+:root[data-theme="dark"] #monthGrid .day-cell{
+  opacity:1!important;
+  background:#252b39!important;
+  color:#e4e8f4!important;
+  border-color:#384052!important;
+  box-shadow:none!important;
+}
+:root[data-theme="dark"] #monthGrid .day-cell:nth-child(7n+1){color:#f0a7b5!important;}
+:root[data-theme="dark"] #monthGrid .day-cell:nth-child(7n){color:#b8caff!important;}
+:root[data-theme="dark"] #monthGrid .day-cell.dim{
+  opacity:1!important;
+  background:#1c2230!important;
+  color:#818ca3!important;
+}
+:root[data-theme="dark"] #monthGrid .day-cell.dim .day-number{opacity:.75;}
+:root[data-theme="dark"] #monthGrid .day-cell.holiday{background:#29283b!important;}
+:root[data-theme="dark"] #monthGrid .day-cell.holiday em{color:#f09ab1!important;}
+:root[data-theme="dark"] #monthGrid .day-cell.selected{
+  outline:2px solid #baadff!important;
+  outline-offset:-2px!important;
+  background:#393751!important;
+  color:#fff!important;
+}
+:root[data-theme="dark"] #monthGrid .day-cell.selected.dim{background:#343248!important;}
+:root[data-theme="dark"] #monthGrid .agenda-item{
+  background:#41365b!important;
+  color:#f1eaff!important;
+  border-color:#a996ee!important;
+}
+:root[data-theme="dark"] #monthGrid .agenda-item.done{
+  background:#363a48!important;
+  color:#b0b7ca!important;
+  border-color:#697388!important;
+}
+:root[data-theme="dark"] #monthGrid .agenda-more{color:#c5b8fa!important;}
+:root[data-theme="dark"] #monthGrid .calendar-dots b{background:#b6a5ff!important;}
+:root[data-theme="dark"] #calendarGrip span{background:#a9a4c4!important;}
+
+/* One scroll region: fixed dialog header and footer, scroll the form body only. */
+#clientDialog.dialog,#eventDialog.dialog{
+  display:block;
+  position:fixed;
+  height:min(91dvh,900px);
+  max-height:calc(100dvh - 24px);
+  max-width:min(96vw,570px);
+  padding:0!important;
+  overflow:hidden!important;
+  overscroll-behavior:contain;
+}
+#clientDialog.dialog:not([open]),#eventDialog.dialog:not([open]){display:none;}
+#clientDialog #clientForm,#eventDialog #eventForm{
+  height:100%;
+  max-height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+#clientDialog .dialog-heading,#eventDialog .dialog-heading{
+  flex:0 0 auto;
+  margin:0;
+  padding:20px 22px 15px;
+  background:var(--surface);
+  border-bottom:1px solid var(--line);
+  position:relative;
+  z-index:2;
+}
+#clientDialog .dialog-heading .round-btn,#eventDialog .dialog-heading .round-btn{flex:0 0 auto;}
+#clientDialog .form-grid,#eventDialog .form-grid{
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  max-height:none!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  padding:16px 22px 24px;
+  margin:0;
+  overscroll-behavior-y:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#89849f transparent;
+  -webkit-overflow-scrolling:touch;
+}
+#clientDialog .dialog-actions,#eventDialog .dialog-actions{
+  flex:0 0 auto;
+  position:relative;
+  z-index:2;
+  margin:0;
+  padding:14px 22px max(16px, env(safe-area-inset-bottom));
+  background:var(--surface);
+  border-top:1px solid var(--line);
+}
+#clientDialog .dialog-actions button,#eventDialog .dialog-actions button{min-height:38px;}
+:root[data-theme="dark"] #clientDialog .dialog-heading,
+:root[data-theme="dark"] #clientDialog .dialog-actions,
+:root[data-theme="dark"] #eventDialog .dialog-heading,
+:root[data-theme="dark"] #eventDialog .dialog-actions{background:#242a37!important;border-color:#384052!important;}
+:root[data-theme="dark"] #clientDialog .form-grid,
+:root[data-theme="dark"] #eventDialog .form-grid{scrollbar-color:#596275 transparent;}
+
+/* ID / PW edit form copy button inside the input's right edge. */
+#clientFields>label:has(> button.inline-copy){position:relative;display:block;min-width:0;}
+#clientFields>label:has(> button.inline-copy)>input,
+#clientFields>label:has(> button.inline-copy)>textarea{
+  padding-right:53px!important;
+}
+#clientFields .inline-copy{
+  position:absolute;
+  right:9px;
+  bottom:7px;
+  z-index:1;
+  width:35px;
+  height:35px;
+  min-height:35px;
+  margin:0!important;
+  padding:0!important;
+  display:grid;
+  place-items:center;
+  background:transparent!important;
+  color:#8a7de0!important;
+  border:1px solid transparent!important;
+  border-radius:8px;
+  font-size:0!important;
+  line-height:1;
+}
+#clientFields .inline-copy:hover,#clientFields .inline-copy:focus-visible{
+  background:var(--light)!important;
+  border-color:var(--line)!important;
+  outline:none;
+}
+#clientFields .inline-copy svg{display:block;width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round;}
+:root[data-theme="dark"] #clientFields .inline-copy{color:#c1b1ff!important;}
+
+@media(max-width:390px){
+ #clientDialog .dialog-heading,#eventDialog .dialog-heading{padding:16px 16px 13px;}
+ #clientDialog .form-grid,#eventDialog .form-grid{padding:12px 16px 20px;}
+ #clientDialog .dialog-actions,#eventDialog .dialog-actions{padding:12px 16px max(14px,env(safe-area-inset-bottom));}
+}
