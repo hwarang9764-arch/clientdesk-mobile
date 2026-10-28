@@ -1,5 +1,5 @@
 /* Static PWA shell. Existing Drive / Calendar / credential files are unchanged. */
-const CACHE_VERSION='wwtt-mobile-v1.2.7';
+const CACHE_VERSION='wwtt-mobile-v1.2.8';
 const STATIC=['./','./index.html','./app.js','./style.css','./ui-fix.css','./ui-fix.js','./drive-crypto.js','./holidays.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_VERSION).then(cache=>cache.addAll(STATIC))));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const name of await caches.keys())if(name.startsWith('wwtt-mobile-')&&name!==CACHE_VERSION)await caches.delete(name);await clients.claim();})()));
