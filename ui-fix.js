@@ -1,4 +1,4 @@
-/* Client Desk Mobile v1.2.4: enhance existing copy buttons without replacing their handlers. */
+/* Client Desk Mobile v1.2.6: enhance existing copy buttons without replacing their handlers. */
 (()=>{
   'use strict';
   const SVG='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
@@ -20,7 +20,7 @@
   // The UI patch is versioned independently; the original sync/core app stays untouched.
   const version=document.getElementById('appVersion');
   if(version){
-    const show=()=>{if(version.textContent!=='1.2.4')version.textContent='1.2.4';};
+    const show=()=>{if(version.textContent!=='1.2.6')version.textContent='1.2.6';};
     new MutationObserver(show).observe(version,{childList:true,characterData:true,subtree:true});
     show();
   }
