@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const VERSION='1.0.0';
+const VERSION='1.1.0';
 const $=id=>document.getElementById(id);
 const DEFAULT_COLUMNS=[['company','상호','text'],['industry','업종','select'],['ceo','대표자','text'],['phone','휴대폰번호','tel'],['email','이메일','email'],['fax','팩스','tel'],['address','주소','text'],['status','진행 상태','status'],['service','관리 서비스','text'],['start','계약 시작일','date'],['fee','월 관리비','currency'],['memo','메모','longtext']].map(([id,label,type])=>({id,label,type,width:160,hidden:false}));
 const DEFAULT_INDUSTRIES=['숙박','미용·뷰티','카페·음식점','소매·쇼핑','기타'];
@@ -12,10 +12,15 @@ const SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.c
 const CLIENT_ID_KEY='wwtt_mobile_web_oauth_id';
 const FILE_ID_KEY='wwtt_mobile_drive_file_id';
 const REVISION_KEY='wwtt_mobile_cloud_revision';
+const AUTH_SESSION_KEY='wwtt_mobile_google_token_session_v1';
+const CALENDAR_CACHE_KEY='calendar-snapshot-v1';
+const CALENDAR_MODE_KEY='wwtt_mobile_calendar_expanded';
 let db,state={columns:DEFAULT_COLUMNS,rows:[],industries:[...DEFAULT_INDUSTRIES],dense:false};
 let dirty=false,knownRevision='',driveFileId='',salt='',aesKey=null,token='',tokenExpires=0;
 let syncBusy=false,syncConflict=false,editId=null,editing=false,currentTab='clients',statusFilter='전체',industryFilter='',search='';
 let calendarEvents=[],calMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),selectedDay=dateLocal(new Date()),eventId=null,eventSource=null;
+let calendarExpanded=readLocal(CALENDAR_MODE_KEY)==='1',calendarCacheStamp=0,calendarRequestSeq=0;
+const eventPending=new Set();
 let toastTimer=null,uploadTimer=null,installPrompt=null,lastSyncAt='',syncRetryMs=0;
 function uid(){return crypto.randomUUID?.()||`mob-${Date.now()}-${Math.random().toString(36).slice(2)}`;}
 function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -23,6 +28,9 @@ function dateLocal(d){const v=new Date(d);return `${v.getFullYear()}-${String(v.
 function addDays(s,delta){const [y,m,d]=s.split('-').map(Number);return dateLocal(new Date(y,m-1,d+delta));}
 function readLocal(k){try{return localStorage.getItem(k)||'';}catch{return '';}}
 function writeLocal(k,v){try{localStorage.setItem(k,v);}catch{}}
+function sessionGet(k){try{return sessionStorage.getItem(k)||'';}catch{return '';}}
+function sessionPut(k,v){try{sessionStorage.setItem(k,v);}catch{}}
+function sessionDelete(k){try{sessionStorage.removeItem(k);}catch{}}
 function notify(msg){const t=$('toast');t.textContent=msg;t.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('visible'),3300);}
 function status(msg,tone='ok'){const dot=$('statusDot');$('statusText').textContent=msg;dot.className='dot'+(tone==='ok'?'':tone==='warn'?' warn':tone==='error'?' error':' muted');$('syncHealth').textContent=syncBusy?'동기화 중…':dirty?'동기화 대기':lastSyncAt||'';}
 function validSnapshot(s){return !!(s&&Array.isArray(s.columns)&&s.columns.length>0&&s.columns.length<=150&&Array.isArray(s.rows)&&s.rows.length<=100000&&s.columns.every(c=>c&&typeof c.id==='string'&&typeof c.label==='string'&&['text','longtext','tel','email','number','currency','date','status','select'].includes(c.type)));}
@@ -36,7 +44,29 @@ async function persist(){const record=localRecord();writeQueue=writeQueue.catch(
 async function changed(){localChangeSeq++;dirty=true;await persist();renderClients();if(!aesKey||!token){status('이 기기에 저장됨 · Drive 연결 필요','warn');return;}status('로컬 저장 완료 · Drive 업로드 대기','warn');scheduleUpload();}
 function scheduleUpload(delay=1200){clearTimeout(uploadTimer);uploadTimer=setTimeout(()=>syncRound('upload').catch(e=>status(e.message,'error')),delay);}
 function renderStats(){const rows=state.rows.filter(r=>!r.demo);$('stats').innerHTML=[['전체 거래처',rows.length],['계약중',rows.filter(r=>r.values.status==='계약중').length],['상담중',rows.filter(r=>r.values.status==='상담중').length],['대기',rows.filter(r=>r.values.status==='대기').length]].map(([name,n])=>`<div class="stat"><small>${name}</small><strong>${n}</strong></div>`).join('');}
-function renderClients(){renderStats();const arr=state.rows.filter(r=>!r.demo).filter(r=>(statusFilter==='전체'||r.values.status===statusFilter)&&(!industryFilter||r.values.industry===industryFilter)&&(!search||Object.values(r.values).some(v=>String(v).toLowerCase().includes(search.toLowerCase()))));$('clientCount').textContent=arr.length+'건';$('statusFilters').innerHTML=['전체',...DEFAULT_STATUS].map(st=>`<button class="chip ${statusFilter===st?'active':''}" data-status="${safe(st)}">${safe(st)}</button>`).join('');const s=$('industryFilter');const current=industryFilter;s.replaceChildren(new Option('전체 업종',''),...state.industries.map(x=>new Option(x,x)));s.value=current;if(s.value!==current){industryFilter='';s.value='';}const list=$('clientList');list.replaceChildren();if(!arr.length){list.innerHTML='<div class="empty">표시할 거래처가 없습니다.<br>거래처를 추가하거나 필터를 변경해 주세요.</div>';return;}for(const r of arr){const v=r.values;const card=document.createElement('button');card.type='button';card.className='client-card';card.dataset.row=r.id;card.innerHTML=`<div class="client-card-head"><div style="min-width:0"><span class="company-name">${safe(v.company||'이름 없는 거래처')}</span><span class="company-sub">${safe(v.address||v.service||'주소 미등록')}</span></div><span class="pill ${v.status==='계약중'?'contract':v.status==='대기'?'wait':v.status==='종료'?'end':''}">${safe(v.status||'상태 미정')}</span></div><div class="card-info"><span class="pill">${safe(v.industry||'업종 미지정')}</span><span class="info">${safe(v.ceo||'대표자 미등록')}</span><span class="info">${safe(v.phone||'연락처 미등록')}</span></div>`;list.appendChild(card);}}
+function cleanPhone(raw){
+ const value=String(raw||'').trim().replace(/[\s().-]/g,'');
+ return /^\+?[0-9]{7,17}$/.test(value)?value:'';
+}
+const PHONE_SVG='<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.7 19.7 0 0 1 3.1 5.2 2 2 0 0 1 5 3h3a2 2 0 0 1 2 1.7c.13.96.37 1.9.72 2.78a2 2 0 0 1-.45 2.11L9 10.9a16 16 0 0 0 4.1 4.1l1.3-1.27a2 2 0 0 1 2.1-.46c.9.35 1.83.59 2.79.72a2 2 0 0 1 1.7 2.01Z"/></svg>';
+const SMS_SVG='<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 9 9 0 0 1-4-.9L3 21l1.8-5.6a8.5 8.5 0 1 1 16.2-3.9Z"/></svg>';
+function renderClients(){
+ renderStats();
+ const arr=state.rows.filter(r=>!r.demo).filter(r=>(statusFilter==='전체'||r.values.status===statusFilter)&&(!industryFilter||r.values.industry===industryFilter)&&(!search||Object.values(r.values).some(v=>String(v).toLowerCase().includes(search.toLowerCase()))));
+ $('clientCount').textContent=arr.length+'건';
+ $('statusFilters').innerHTML=['전체',...DEFAULT_STATUS].map(st=>`<button class="chip ${statusFilter===st?'active':''}" data-status="${safe(st)}">${safe(st)}</button>`).join('');
+ const sel=$('industryFilter'),current=industryFilter;sel.replaceChildren(new Option('전체 업종',''),...state.industries.map(x=>new Option(x,x)));sel.value=current;
+ if(sel.value!==current){industryFilter='';sel.value='';}
+ const list=$('clientList');list.replaceChildren();
+ if(!arr.length){list.innerHTML='<div class="empty">표시할 거래처가 없습니다.<br>거래처를 추가하거나 필터를 변경해 주세요.</div>';return;}
+ for(const r of arr){
+  const v=r.values,phone=cleanPhone(v.phone);
+  const card=document.createElement('article');card.className='client-card';card.dataset.row=r.id;
+  card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-label',`${String(v.company||'이름 없는 거래처')} 수정`);
+  card.innerHTML=`<div class="client-card-head"><div style="min-width:0"><span class="company-name">${safe(v.company||'이름 없는 거래처')}</span><span class="company-sub">${safe(v.address||v.service||'주소 미등록')}</span></div><span class="pill ${v.status==='계약중'?'contract':v.status==='대기'?'wait':v.status==='종료'?'end':''}">${safe(v.status||'상태 미정')}</span></div><div class="card-info"><span class="pill">${safe(v.industry||'업종 미지정')}</span><span class="info">${safe(v.ceo||'대표자 미등록')}</span><span class="contact-group"><span class="info">${safe(v.phone||'연락처 미등록')}</span>${phone?`<a class="contact-action" href="tel:${phone}" aria-label="${safe(v.company||'거래처')} 전화 걸기" title="전화 걸기">${PHONE_SVG}<span>전화</span></a><a class="contact-action sms" href="sms:${phone}" aria-label="${safe(v.company||'거래처')} 문자 보내기" title="문자 보내기">${SMS_SVG}<span>문자</span></a>`:''}</span></div>`;
+  list.appendChild(card);
+ }
+}
 function inputType(type){return ({date:'date',email:'email',tel:'tel',number:'number',currency:'number'})[type]||'text';}
 function openClient(rowId=null){editId=rowId;const r=state.rows.find(x=>x.id===rowId);editing=true;$('clientModalTitle').textContent=r?'거래처 수정':'거래처 추가';$('deleteClient').hidden=!r;const fields=$('clientFields');fields.replaceChildren();for(const c of state.columns){const label=document.createElement('label');label.textContent=c.label;let field;if(c.type==='select'||c.type==='status'){field=document.createElement('select');const opts=c.id==='industry'?state.industries:c.type==='status'?DEFAULT_STATUS:(c.options||[]);field.add(new Option('선택 안 함',''));for(const x of opts)field.add(new Option(x,x));}else if(c.type==='longtext'){field=document.createElement('textarea');field.rows=3;}else{field=document.createElement('input');field.type=inputType(c.type);if(c.type==='tel')field.setAttribute('inputmode','tel');}field.name=c.id;field.value=String(r?.values?.[c.id]??'');if(c.id==='company')field.required=true;field.maxLength=20000;label.appendChild(field);if(c.copyEnabled&&r&&r.values[c.id]){const copy=document.createElement('button');copy.type='button';copy.className='inline-copy';copy.textContent='복사';copy.onclick=()=>navigator.clipboard.writeText(field.value).then(()=>notify('복사했습니다'));label.append(copy);}fields.append(label);}$('clientDialog').showModal();}
 async function saveClient(e){e.preventDefault();const dialog=$('clientDialog');const values={...(state.rows.find(r=>r.id===editId)?.values||{})};const data=new FormData($('clientForm'));for(const [k,v] of data.entries())values[k]=String(v);if(!values.company?.trim()){notify('상호를 입력해 주세요.');return;}const existing=state.rows.find(r=>r.id===editId);if(existing){existing.values=values;}else state.rows.push({id:uid(),demo:false,values});dialog.close();editing=false;await changed();notify('거래처를 저장했습니다.');}
@@ -48,7 +78,29 @@ function switchView(which){currentTab=which;for(const k of ['clients','calendar'
 function fileDownload(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json;charset=utf-8'}));a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},3000);}
 /* Browser OAuth. A web OAuth client ID must belong to the same Google Cloud
  * project as the existing extension client and have the hosted HTTPS origin. */
-function accessReady(){return token&&Date.now()<tokenExpires-60000;}
+function accessReady(){return !!token&&Date.now()<tokenExpires-30000;}
+function clearGoogleToken(){token='';tokenExpires=0;sessionDelete(AUTH_SESSION_KEY);}
+function rememberGoogleToken(value,expiresIn){
+ token=value;tokenExpires=Date.now()+Number(expiresIn||3600)*1000;
+ sessionPut(AUTH_SESSION_KEY,JSON.stringify({accessToken:token,expiresAt:tokenExpires,clientId:$('oauthId').value.trim()}));
+ setAuthUI();
+}
+function restoreGoogleToken(){
+ try{
+  const data=JSON.parse(sessionGet(AUTH_SESSION_KEY));
+  if(data?.clientId===readLocal(CLIENT_ID_KEY)&&typeof data.accessToken==='string'&&typeof data.expiresAt==='number'&&data.expiresAt>Date.now()+30000){
+   token=data.accessToken;tokenExpires=data.expiresAt;
+   return true;
+  }
+ }catch{}
+ clearGoogleToken();return false;
+}
+function setAuthUI(){
+ const active=accessReady();
+ $('googleInfo').textContent=active?'Google 연결됨 · 현재 로그인 세션이 유지됩니다.':'Google 연결 필요 · 로그인 유효기간이 끝났으면 다시 연결하세요.';
+ $('connectGoogle').textContent=active?'Google 계정 다시 연결':'Google Drive·캘린더 연결';
+ if($('calConnectionHint'))$('calConnectionHint').textContent=active?'Google Calendar 연결됨 · 일정 자동 동기화':calendarEvents.length?'최근 저장된 일정 표시 중 · 최신 정보는 Google 재연결 후 확인':'Google 계정을 연결하면 일정이 표시됩니다.';
+}
 function ensureGoogleScript(){if(!window.google?.accounts?.oauth2)throw Error('Google 로그인 라이브러리를 불러오지 못했습니다. 인터넷 연결과 브라우저 팝업 설정을 확인하세요.');}
 function connectGoogle(){
  ensureGoogleScript();const id=$('oauthId').value.trim();
@@ -56,18 +108,17 @@ function connectGoogle(){
  const client=google.accounts.oauth2.initTokenClient({client_id:id,scope:SCOPE,callback:async response=>{
   if(response.error){status('Google 승인 실패: '+response.error,'error');return;}
   if(!response.access_token){status('Google 로그인 토큰을 받지 못했습니다.','error');return;}
-  token=response.access_token;tokenExpires=Date.now()+Number(response.expires_in||3600)*1000;
-  $('googleInfo').textContent='Google 인증 완료 · Drive·Calendar 권한 확보 (접근 토큰은 이 세션에서만 보관)';
-  status('Google 연결됨 · PC 백업 PIN을 입력해 주세요');
+  rememberGoogleToken(response.access_token,response.expires_in);
+  status('Google 연결됨 · 새로고침 시에도 현재 세션 유지');
   if(aesKey)syncRound().catch(e=>status(e.message,'error'));
-  if(currentTab==='calendar')calendarRefresh().catch(e=>notify(e.message));
+  calendarRefresh().catch(e=>notify(e.message));
  },error_callback:()=>{status('Google 로그인 팝업이 닫히거나 차단되었습니다.','error');}});
  client.requestAccessToken({prompt:''});
 }
 async function driveRequest(url,options={}){
- if(!accessReady()){token='';throw Error('Google 연결 시간이 만료되었습니다. Google 계정을 다시 연결하세요.');}
+ if(!accessReady()){clearGoogleToken();setAuthUI();throw Error('Google 연결 시간이 만료되었습니다. Google 계정을 다시 연결하세요.');}
  const response=await fetch(url,{...options,headers:{...(options.headers||{}),Authorization:`Bearer ${token}`},cache:'no-store'});
- if(response.status===401){token='';throw Error('Google 인증이 만료되었습니다. 다시 연결해 주세요.');}
+ if(response.status===401){clearGoogleToken();setAuthUI();throw Error('Google 인증이 만료되었습니다. 다시 연결해 주세요.');}
  if(!response.ok){const msg=await response.text().catch(()=>'');throw Error(`Google Drive 오류 ${response.status} · ${msg.slice(0,140)}`);}
  return response.json();
 }
@@ -157,17 +208,95 @@ async function importData(file){if(!file)return;const snapshot=normalize(JSON.pa
 /* Google Calendar API: only the event fields the editor changes are PATCHed;
  * other clients' attendees, recurrence and reminders are preserved. */
 async function calendarRequest(path='',options={}){
- if(!accessReady())throw Error('Google 로그인 후 캘린더를 연결하세요.');
+ if(!accessReady())throw Error('Google 연결이 만료되었습니다. 설정에서 계정을 다시 연결하세요.');
  const res=await fetch(CAL_API+path,{...options,headers:{...(options.headers||{}),Authorization:'Bearer '+token,...(options.body?{'Content-Type':'application/json'}:{})},cache:'no-store'});
- if(res.status===401){token='';throw Error('Google 인증 만료 · 다시 연결해 주세요.');}
+ if(res.status===401){clearGoogleToken();setAuthUI();throw Error('Google 인증 만료 · 다시 연결해 주세요.');}
  if(!res.ok)throw Error('Google Calendar 오류 '+res.status+': '+(await res.text()).slice(0,140));
  return res.status===204?{}:res.json();
 }
 function timeOf(ev){if(ev.start?.date)return '종일';const d=new Date(ev.start?.dateTime);return Number.isNaN(d.getTime())?'':d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});}
 function evDay(ev){return ev.start?.date||dateLocal(new Date(ev.start?.dateTime));}
-async function calendarRefresh(){if(!accessReady())return;const start=new Date(calMonth.getFullYear(),calMonth.getMonth(),-7).toISOString(),end=new Date(calMonth.getFullYear(),calMonth.getMonth()+2,7).toISOString();const query=new URLSearchParams({timeMin:start,timeMax:end,singleEvents:'true',maxResults:'2500'});let events=[],next='';for(let p=0;p<5;p++){if(next)query.set('pageToken',next);const result=await calendarRequest('?'+query);events.push(...(result.items||[]));next=result.nextPageToken||'';if(!next)break;}calendarEvents=events.filter(ev=>ev.status!=='cancelled');renderCalendar();}
-function renderCalendar(){const title=$('monthTitle');title.textContent=`${calMonth.getFullYear()}년 ${calMonth.getMonth()+1}월`;const grid=$('monthGrid');grid.replaceChildren();for(const wd of ['일','월','화','수','목','금','토']){const e=document.createElement('div');e.className='weekday';e.textContent=wd;grid.append(e);}const begin=new Date(calMonth.getFullYear(),calMonth.getMonth(),1-calMonth.getDay());for(let i=0;i<42;i++){const d=new Date(begin.getFullYear(),begin.getMonth(),begin.getDate()+i),date=dateLocal(d),items=calendarEvents.filter(ev=>evDay(ev)===date);const btn=document.createElement('button');btn.type='button';const holiday=window.WWTT_HOLIDAYS?.[date]||'';btn.className='day-cell'+(d.getMonth()!==calMonth.getMonth()?' dim':'')+(selectedDay===date?' selected':'')+(holiday?' holiday':'');btn.dataset.day=date;btn.innerHTML=`<span>${d.getDate()}</span>${holiday?'<em>'+safe(holiday)+'</em>':''}${items.length?'<b aria-label="일정 '+items.length+'건"></b>':''}`;grid.append(btn);}renderDayEvents();}
-function renderDayEvents(){$('selectedDateLabel').textContent=selectedDay;$('dayEvents').replaceChildren();const arr=calendarEvents.filter(ev=>evDay(ev)===selectedDay).sort((a,b)=>(a.start?.dateTime||'').localeCompare(b.start?.dateTime||''));if(!arr.length){$('dayEvents').innerHTML='<div class="empty">선택한 날짜의 일정이 없습니다.<br>+ 일정 버튼으로 새 일정을 추가해 주세요.</div>';return;}for(const ev of arr){const div=document.createElement('div');div.className='event-card';const title=document.createElement('div');title.innerHTML=`<strong>${safe(ev.summary||'제목 없음')}</strong><small>${safe(timeOf(ev))} · ${safe(ev.location||'장소 없음')}</small>`;const actions=document.createElement('div');actions.className='event-actions';for(const [label,action] of [['수정','edit'],['복사','copy']]){const btn=document.createElement('button');btn.textContent=label;btn.dataset.eventId=ev.id;btn.dataset.action=action;actions.append(btn);}div.append(title,actions);$('dayEvents').append(div);}}
+function eventDays(ev){
+ const start=ev.start?.date|| (ev.start?.dateTime?dateLocal(new Date(ev.start.dateTime)):'');
+ if(!start)return [];
+ const allDay=!!ev.start?.date;
+ const end=allDay?(ev.end?.date||addDays(start,1)):(ev.end?.dateTime?dateLocal(new Date(new Date(ev.end.dateTime).getTime()-1)):addDays(start,1));
+ const days=[];let d=start;
+ for(let i=0;i<100&&d<=(allDay?addDays(end,-1):end);i++,d=addDays(d,1))days.push(d);
+ return days.length?days:[start];
+}
+function eventDone(ev){return ev.extendedProperties?.private?.clientDeskDone==='1';}
+function eventsOn(date){return calendarEvents.filter(ev=>eventDays(ev).includes(date));}
+function setCalendarExpanded(next){calendarExpanded=!!next;writeLocal(CALENDAR_MODE_KEY,calendarExpanded?'1':'0');renderCalendar();}
+async function cacheCalendar(){
+ if(!db)return;
+ const record={items:calendarEvents,checkedAt:Date.now()};calendarCacheStamp=record.checkedAt;
+ await new Promise((resolve,reject)=>{const tx=db.transaction('data','readwrite');tx.objectStore('data').put(record,CALENDAR_CACHE_KEY);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+}
+async function restoreCalendarCache(){
+ if(!db)return;
+ const record=await new Promise((resolve,reject)=>{const req=db.transaction('data','readonly').objectStore('data').get(CALENDAR_CACHE_KEY);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
+ if(Array.isArray(record?.items)&&record.items.length<=15000){calendarEvents=record.items;calendarCacheStamp=Number(record.checkedAt)||0;}
+}
+async function calendarRefresh(){
+ if(!accessReady()){setAuthUI();return;}
+ const seq=++calendarRequestSeq;
+ const start=new Date(calMonth.getFullYear(),calMonth.getMonth(),-7).toISOString(),end=new Date(calMonth.getFullYear(),calMonth.getMonth()+2,7).toISOString();
+ const query=new URLSearchParams({timeMin:start,timeMax:end,singleEvents:'true',maxResults:'2500'});
+ let events=[],next='';
+ for(let p=0;p<5;p++){if(next)query.set('pageToken',next);const result=await calendarRequest('?'+query);events.push(...(result.items||[]));next=result.nextPageToken||'';if(!next)break;}
+ if(seq!==calendarRequestSeq)return;
+ calendarEvents=events.filter(ev=>ev.status!=='cancelled');renderCalendar();setAuthUI();
+ cacheCalendar().catch(e=>console.warn('일정 캐시 저장 실패',e));
+}
+function renderCalendar(){
+ $('monthTitle').textContent=`${calMonth.getFullYear()}년 ${calMonth.getMonth()+1}월`;
+ const grid=$('monthGrid');grid.replaceChildren();grid.classList.toggle('expanded',calendarExpanded);
+ const expandBtn=$('toggleCalendar');expandBtn.textContent=calendarExpanded?'달력 접기':'달력 펼치기';expandBtn.setAttribute('aria-expanded',String(calendarExpanded));
+ $('calendarGrip').setAttribute('aria-label',calendarExpanded?'달력 접기':'달력 펼치기');
+ const byDate=new Map();for(const ev of calendarEvents){for(const d of eventDays(ev)){if(!byDate.has(d))byDate.set(d,[]);byDate.get(d).push(ev);}}
+ for(const wd of ['일','월','화','수','목','금','토']){const e=document.createElement('div');e.className='weekday';e.textContent=wd;grid.append(e);}
+ const begin=new Date(calMonth.getFullYear(),calMonth.getMonth(),1-calMonth.getDay());
+ for(let i=0;i<42;i++){
+  const d=new Date(begin.getFullYear(),begin.getMonth(),begin.getDate()+i),date=dateLocal(d),items=byDate.get(date)||[];
+  const btn=document.createElement('button');btn.type='button';const holiday=window.WWTT_HOLIDAYS?.[date]||'';
+  btn.className='day-cell'+(d.getMonth()!==calMonth.getMonth()?' dim':'')+(selectedDay===date?' selected':'')+(holiday?' holiday':'');btn.dataset.day=date;
+  const agenda=calendarExpanded?`<div class="agenda-list">${items.slice(0,3).map(ev=>`<span class="agenda-item ${eventDone(ev)?'done':''}" title="${safe(ev.summary||'일정')}">${safe(ev.summary||'일정')}</span>`).join('')}${items.length>3?`<span class="agenda-more">+${items.length-3}</span>`:''}</div>`:(items.length?`<span class="calendar-dots" aria-label="일정 ${items.length}건">${'<b></b>'.repeat(Math.min(items.length,3))}</span>`:'');
+  btn.innerHTML=`<span class="day-number">${d.getDate()}</span>${holiday?'<em>'+safe(holiday)+'</em>':''}${agenda}`;
+  grid.append(btn);
+ }
+ renderDayEvents();setAuthUI();
+}
+function renderDayEvents(){
+ $('selectedDateLabel').textContent=selectedDay;$('dayEvents').replaceChildren();
+ const arr=eventsOn(selectedDay).sort((a,b)=>(a.start?.dateTime||'').localeCompare(b.start?.dateTime||''));
+ if(!arr.length){$('dayEvents').innerHTML='<div class="empty">선택한 날짜의 일정이 없습니다.<br>+ 일정 버튼으로 새 일정을 추가해 주세요.</div>';return;}
+ for(const ev of arr){
+  const div=document.createElement('div'),done=eventDone(ev);div.className='event-card'+(done?' completed':'');
+  const title=document.createElement('div');title.className='event-card-text';
+  title.innerHTML=`<strong>${safe(ev.summary||'제목 없음')}</strong><small>${safe(timeOf(ev))} · ${safe(ev.location||'장소 없음')}</small>`;
+  const actions=document.createElement('div');actions.className='event-actions';
+  for(const [label,action] of [[done?'완료 취소':'✓ 완료','done'],['수정','edit'],['복사','copy']]){
+   const btn=document.createElement('button');btn.type='button';btn.textContent=label;btn.dataset.eventId=ev.id;btn.dataset.action=action;
+   if(action==='done'){btn.className='event-done';btn.setAttribute('aria-pressed',String(done));btn.disabled=eventPending.has(ev.id);}
+   actions.append(btn);
+  }
+  div.append(title,actions);$('dayEvents').append(div);
+ }
+}
+async function toggleDone(ev){
+ if(eventPending.has(ev.id))return;
+ if(!accessReady()){notify('Google 연결이 만료되었습니다. 설정에서 다시 연결하세요.');switchView('settings');return;}
+ eventPending.add(ev.id);renderDayEvents();
+ const next=!eventDone(ev);
+ try{
+  const props={...(ev.extendedProperties?.private||{}),clientDeskDone:next?'1':'0'};
+  await calendarRequest('/'+encodeURIComponent(ev.id),{method:'PATCH',body:JSON.stringify({extendedProperties:{private:props}})});
+  ev.extendedProperties={...(ev.extendedProperties||{}),private:props};renderCalendar();
+  notify(next?'일정 완료 처리했습니다.':'일정을 미완료로 되돌렸습니다.');
+  calendarRefresh().catch(e=>notify('완료 상태 저장됨 · 갱신 확인 실패: '+e.message));
+ }finally{eventPending.delete(ev.id);renderDayEvents();}
+}
 function openEvent(ev=null,copy=false){if(!accessReady()){notify('설정에서 Google에 먼저 연결하세요.');switchView('settings');return;}eventId=ev&&!copy?ev.id:null;eventSource=ev&&!copy?ev:null;$('eventModalTitle').textContent=copy?'일정 복사':ev?'일정 수정':'새 일정';$('deleteEvent').hidden=!eventId;const form=$('eventForm');form.reset();form.elements.summary.value=ev?.summary||'';form.elements.date.value=ev?evDay(ev):selectedDay;const isAllDay=!!ev?.start?.date;form.elements.allDay.checked=isAllDay;form.elements.start.disabled=isAllDay;form.elements.end.disabled=isAllDay;form.elements.endDate.value=ev?(ev.end?.date?addDays(ev.end.date,-1):dateLocal(new Date(ev.end?.dateTime||ev.start?.dateTime))):selectedDay;const at=ev?.start?.dateTime?new Date(ev.start.dateTime):null,until=ev?.end?.dateTime?new Date(ev.end.dateTime):null;const hhmm=d=>d?`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`:null;form.elements.start.value=hhmm(at)||'09:00';form.elements.end.value=hhmm(until)||'10:00';form.elements.location.value=ev?.location||'';form.elements.description.value=ev?.description||'';form.elements.type.value=ev?.extendedProperties?.private?.clientDeskType||'personal';form.elements.color.value=['white','green','yellow','pink','lavender','iceblue'].includes(ev?.extendedProperties?.private?.clientDeskColor)?ev.extendedProperties.private.clientDeskColor:'white';$('eventClient').replaceChildren(new Option('연결 안 함',''),...state.rows.filter(r=>!r.demo&&r.values.company).map(r=>new Option(r.values.company,r.id)));$('eventClient').value=ev?.extendedProperties?.private?.clientDeskClientId||'';$('eventDialog').showModal();}
 async function eventSubmit(e){e.preventDefault();if(!accessReady())throw Error('Google 연결이 필요합니다.');const f=$('eventForm').elements;const day=f.date.value,endDay=f.endDate.value,start=f.start.value,end=f.end.value,isAllDay=f.allDay.checked;if(!day||!endDay||(isAllDay?endDay<day:(new Date(`${endDay}T${end}:00+09:00`)<=new Date(`${day}T${start}:00+09:00`)))){notify('올바른 시작·종료 날짜와 시간을 입력하세요.');return;}const selectedClient=state.rows.find(r=>r.id===f.client.value);const patch={summary:f.summary.value.trim(),description:f.description.value,location:f.location.value,start:isAllDay?{date:day}:{dateTime:`${day}T${start}:00+09:00`,timeZone:'Asia/Seoul'},end:isAllDay?{date:addDays(endDay,1)}:{dateTime:`${endDay}T${end}:00+09:00`,timeZone:'Asia/Seoul'}};if(!patch.summary){notify('제목을 입력해 주세요.');return;}const props={...(eventSource?.extendedProperties?.private||{}),clientDeskApp:'1',clientDeskType:f.type.value,clientDeskColor:f.color.value};if(selectedClient){props.clientDeskClientId=selectedClient.id;props.clientDeskClientName=selectedClient.values.company;}else{delete props.clientDeskClientId;delete props.clientDeskClientName;}patch.extendedProperties={private:props};const btn=f.querySelector?.('button')||$('eventForm').querySelector('[type="submit"]');if(btn)btn.disabled=true;try{await calendarRequest(eventId?'/'+encodeURIComponent(eventId):'',{method:eventId?'PATCH':'POST',body:JSON.stringify(patch)});$('eventDialog').close();notify('Google 캘린더에 저장했습니다.');await calendarRefresh();}finally{if(btn)btn.disabled=false;}}
 async function eventDelete(){if(!eventId||!confirm('Google 캘린더에서도 이 일정을 삭제할까요?'))return;await calendarRequest('/'+encodeURIComponent(eventId),{method:'DELETE'});$('eventDialog').close();notify('일정을 삭제했습니다.');await calendarRefresh();}
@@ -178,7 +307,8 @@ function bind(){
  $('statusFilters').addEventListener('click',e=>{const b=e.target.closest('[data-status]');if(b){statusFilter=b.dataset.status;renderClients();}});
  $('industryFilter').addEventListener('change',e=>{industryFilter=e.target.value;renderClients();});
  $('clientSearch').addEventListener('input',e=>{search=e.target.value;renderClients();});
- $('clientList').addEventListener('click',e=>{const b=e.target.closest('[data-row]');if(b)openClient(b.dataset.row);});
+ $('clientList').addEventListener('click',e=>{if(e.target.closest('a,button'))return;const b=e.target.closest('[data-row]');if(b)openClient(b.dataset.row);});
+ $('clientList').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-row]')){e.preventDefault();openClient(e.target.dataset.row);}});
  $('addClient').addEventListener('click',()=>openClient());
  $('clientForm').addEventListener('submit',e=>saveClient(e).catch(onError));
  $('deleteClient').addEventListener('click',()=>deleteClient().catch(onError));
@@ -188,7 +318,7 @@ function bind(){
  $('industryList').addEventListener('click',e=>industryAction(e).catch(onError));
  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.close).close()));
  $('rememberKey').addEventListener('change',()=>persist().catch(onError));
- $('saveOAuth').addEventListener('click',()=>{const id=$('oauthId').value.trim();if(!/^\d+-[\w-]+\.apps\.googleusercontent\.com$/.test(id)){notify('올바른 웹 OAuth 클라이언트 ID를 입력하세요.');return;}writeLocal(CLIENT_ID_KEY,id);notify('웹 OAuth 클라이언트 ID를 저장했습니다.');});
+ $('saveOAuth').addEventListener('click',()=>{const id=$('oauthId').value.trim();if(!/^\d+-[\w-]+\.apps\.googleusercontent\.com$/.test(id)){notify('올바른 웹 OAuth 클라이언트 ID를 입력하세요.');return;}if(id!==readLocal(CLIENT_ID_KEY)){clearGoogleToken();setAuthUI();}writeLocal(CLIENT_ID_KEY,id);notify('웹 OAuth 클라이언트 ID를 저장했습니다.');});
  $('connectGoogle').addEventListener('click',()=>{try{connectGoogle();}catch(e){onError(e);}});
  $('connectDrive').addEventListener('click',()=>connectDrive().catch(onError));
  $('syncNow').addEventListener('click',()=>syncRound().catch(onError));
@@ -197,16 +327,21 @@ function bind(){
  $('importJson').addEventListener('click',()=>$('importFile').click());
  $('importFile').addEventListener('change',e=>importData(e.target.files?.[0]).catch(onError));
  $('checkUpdate').addEventListener('click',()=>checkUpdates(true).catch(onError));
- $('prevMonth').addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calendarEvents=[];renderCalendar();if(accessReady())calendarRefresh().catch(onError);});
- $('nextMonth').addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calendarEvents=[];renderCalendar();if(accessReady())calendarRefresh().catch(onError);});
+ $('prevMonth').addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);renderCalendar();if(accessReady())calendarRefresh().catch(onError);});
+ $('nextMonth').addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);renderCalendar();if(accessReady())calendarRefresh().catch(onError);});
  $('todayMonth').addEventListener('click',()=>{calMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);selectedDay=dateLocal(new Date());renderCalendar();if(accessReady())calendarRefresh().catch(onError);});
  $('monthGrid').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(b){selectedDay=b.dataset.day;renderCalendar();}});
  $('addEvent').addEventListener('click',()=>openEvent());
- $('dayEvents').addEventListener('click',e=>{const b=e.target.closest('[data-event-id]');if(!b)return;const ev=calendarEvents.find(x=>x.id===b.dataset.eventId);if(ev)openEvent(ev,b.dataset.action==='copy');});
+ $('dayEvents').addEventListener('click',e=>{const b=e.target.closest('[data-event-id]');if(!b)return;const ev=calendarEvents.find(x=>x.id===b.dataset.eventId);if(!ev)return;if(b.dataset.action==='done')toggleDone(ev).catch(onError);else openEvent(ev,b.dataset.action==='copy');});
+ $('toggleCalendar').addEventListener('click',()=>setCalendarExpanded(!calendarExpanded));
+ const grip=$('calendarGrip');let touchStart=null;
+ grip.addEventListener('pointerdown',e=>{touchStart=e.clientY;try{grip.setPointerCapture(e.pointerId);}catch{}});
+ grip.addEventListener('pointerup',e=>{if(touchStart===null)return;const delta=e.clientY-touchStart;touchStart=null;if(Math.abs(delta)>22)setCalendarExpanded(delta>0);else setCalendarExpanded(!calendarExpanded);});
+ grip.addEventListener('pointercancel',()=>{touchStart=null;});
  $('eventForm').addEventListener('submit',e=>eventSubmit(e).catch(onError));
  $('eventForm').elements.allDay.addEventListener('change',e=>{for(const name of ['start','end'])$('eventForm').elements[name].disabled=e.target.checked;});
  $('deleteEvent').addEventListener('click',()=>eventDelete().catch(onError));
- window.addEventListener('online',()=>{if(aesKey&&accessReady())syncRound().catch(onError);});
+ window.addEventListener('online',()=>{if(aesKey&&accessReady())syncRound().catch(onError);if(accessReady())calendarRefresh().catch(onError);});
  window.addEventListener('focus',()=>{if(aesKey&&accessReady())syncRound().catch(onError);if(currentTab==='calendar'&&accessReady())calendarRefresh().catch(onError);});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&aesKey&&accessReady())syncRound().catch(onError);});
  setInterval(()=>{if(document.hidden||!navigator.onLine||!accessReady())return;if(aesKey)syncRound().catch(()=>{});if(currentTab==='calendar')calendarRefresh().catch(()=>{});},15000);
@@ -219,7 +354,10 @@ async function init(){
  try{db=await openDB();const stored=await dbRead();if(stored?.snapshot){state=normalize(stored.snapshot);dirty=!!stored.dirty;$('rememberKey').checked=!!stored.remember;if(stored.remember&&stored.key){aesKey=stored.key;salt=stored.keySalt||'';}}}
  catch(e){document.body.innerHTML='<main style="padding:30px"><h2>데이터 저장소를 열지 못했습니다</h2><p>기존 데이터를 삭제하지 않았습니다. 브라우저 저장 공간을 확인해 주세요.</p></main>';console.error(e);return;}
  $('oauthId').value=readLocal(CLIENT_ID_KEY);driveFileId=readLocal(FILE_ID_KEY);knownRevision=readLocal(REVISION_KEY);$('driveFileId').value=driveFileId;$('appVersion').textContent=VERSION;
- renderClients();renderCalendar();bind();status(dirty?'휴대폰에 저장됨 · PC 동기화 대기':'모바일 거래처 관리 준비 완료',dirty?'warn':'idle');document.body.classList.add('js-ready');
+ try{await restoreCalendarCache();}catch(e){console.warn('달력 캐시 복구 실패',e);}
+ const hasSession=restoreGoogleToken();
+ renderClients();renderCalendar();bind();setAuthUI();status(hasSession?'Google 연결 복구 완료 · 일정 확인 중':dirty?'휴대폰에 저장됨 · PC 동기화 대기':'모바일 거래처 관리 준비 완료',dirty?'warn':hasSession?'ok':'idle');document.body.classList.add('js-ready');
+ if(hasSession){calendarRefresh().catch(e=>notify('캘린더 갱신 실패: '+e.message));if(aesKey)syncRound().catch(e=>status(e.message,'error'));}
  registerSW().catch(e=>console.warn('PWA SW registration',e));
 }
 init();
