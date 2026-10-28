@@ -222,3 +222,6 @@
   #clientList .client-card-action-stack{flex-basis:78px;gap:5px;}
   #clientList .client-card-head{gap:7px;}
 }
+
+/* Client Desk 1.2.10: keep telephone data and action links, hide only plain number text. */
+#clientList .client-card .contact-group > .info{display:none!important;}

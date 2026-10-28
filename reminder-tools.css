@@ -1,0 +1,13 @@
+/* Client Desk Mobile v1.2.10 — popup notification preferences */
+#eventDialog .cd-reminders{margin:13px 0 4px;padding:13px;border:1px solid #dfdbea;border-radius:12px;background:#f5f2fc;}
+#eventDialog .cd-reminders-title{font-weight:750;font-size:13px;}
+#eventDialog .cd-reminders-help{margin:5px 0 12px;color:#78728e;font-size:11px;line-height:1.5;}
+#eventDialog .cd-reminders-grid{display:flex;flex-wrap:wrap;gap:7px;}
+#eventDialog .cd-reminders-choice{display:inline-flex;align-items:center;gap:6px;margin:0;min-height:35px;padding:7px 9px;border:1px solid #e0daef;border-radius:8px;background:#fff;font-size:12px;cursor:pointer;white-space:nowrap;}
+#eventDialog .cd-reminders-choice input{margin:0;width:15px;height:15px;accent-color:#6c57c7;}
+#eventDialog .cd-reminders-info{font-size:11px;line-height:1.45;color:#6e55ac;margin:7px 0 0;min-height:0;}
+#eventDialog .cd-reminders-info:empty{display:none;}
+:root[data-theme="dark"] #eventDialog .cd-reminders{background:#2c293c;border-color:#51506b;}
+:root[data-theme="dark"] #eventDialog .cd-reminders-help{color:#c4bdd9;}
+:root[data-theme="dark"] #eventDialog .cd-reminders-choice{background:#353448;color:#eee8fc;border-color:#55536f;}
+:root[data-theme="dark"] #eventDialog .cd-reminders-info{color:#c9bcff;}

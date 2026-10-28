@@ -1,4 +1,4 @@
-/* Client Desk Mobile v1.2.9: view-only refinements. Core application and sync are untouched. */
+/* Client Desk Mobile v1.2.10: view-only refinements. Core application and sync are untouched. */
 (()=>{
   'use strict';
   const COPY_SVG='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
@@ -46,7 +46,7 @@
   const version=document.getElementById('appVersion');
   if(version){
     const showVersion=()=>{
-      if(version.textContent!=='1.2.9')version.textContent='1.2.9';
+      if(version.textContent!=='1.2.10')version.textContent='1.2.10';
     };
     new MutationObserver(showVersion).observe(version,{childList:true,characterData:true,subtree:true});
     showVersion();

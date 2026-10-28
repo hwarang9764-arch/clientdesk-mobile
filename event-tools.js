@@ -1,4 +1,4 @@
-/* Client Desk Mobile 1.2.9 — calendar form enhancements. No changes to Drive / Calendar requests. */
+/* Client Desk Mobile 1.2.10 — calendar form enhancements. No changes to Drive / Calendar requests. */
 (()=>{
   'use strict';
   const dialog=document.getElementById('eventDialog');
@@ -131,13 +131,18 @@
       root.append(b);
     }
   }
-  makeNumButtons(colHour,24,'hour');makeNumButtons(colMin,60,'minute');
+  makeNumButtons(colHour,24,'hour');
+  for(let n=0;n<60;n+=5){
+    const b=document.createElement('button');b.type='button';b.dataset.val=String(n);b.textContent=pad(n);
+    b.setAttribute('aria-label','분 '+pad(n));
+    b.addEventListener('click',()=>{minute=n;renderTime();});colMin.append(b);
+  }
   function openTime(input){
     if(input.disabled)return;
     targetInput=input;
     const match=/^(\d{2}):(\d{2})$/.exec(input.value||'');
     hour=match?Math.min(23,Number(match[1])):9;
-    minute=match?Math.min(59,Number(match[2])):0;
+    minute=match?Math.min(55,5*Math.round(Number(match[2])/5)):0;
     renderTime();timeDialog.showModal();
     // Center selected items after layout without altering the main form scroll.
     requestAnimationFrame(()=>{
@@ -164,28 +169,23 @@
   // Road-name address search via Daum postcode, with direct map search links.
   const location=field('location');
   const locLabel=location?.closest('label');
-  let naverLink,kakaoLink,googleLink;
-  function mapUrl(q,provider){
-    const v=encodeURIComponent(q||'대한민국');
-    if(provider==='naver')return `https://map.naver.com/p/search/${v}`;
-    if(provider==='kakao')return `https://map.kakao.com/?q=${v}`;
-    return `https://www.google.com/maps/search/?api=1&query=${v}`;
+  let naverLink;
+  function mapUrl(q){
+    return `https://map.naver.com/p/search/${encodeURIComponent(q||'대한민국')}`;
   }
   function refreshMapLinks(){
     if(!location)return;
     const q=location.value.trim();
-    if(naverLink)naverLink.href=mapUrl(q,'naver');
-    if(kakaoLink)kakaoLink.href=mapUrl(q,'kakao');
-    if(googleLink)googleLink.href=mapUrl(q,'google');
+    if(naverLink)naverLink.href=mapUrl(q);
   }
   if(locLabel){
     const actions=document.createElement('div');actions.className='cd-address-actions';
     const searchBtn=document.createElement('button');searchBtn.type='button';searchBtn.className='cd-address-search';searchBtn.textContent='⌕ 주소 검색';
-    const link=(text,provider)=>{
-      const a=document.createElement('a');a.className='cd-map-link';a.target='_blank';a.rel='noopener noreferrer';a.textContent=text+' ↗';a.href=mapUrl('',provider);return a;
+    const link=(text)=>{
+      const a=document.createElement('a');a.className='cd-map-link';a.target='_blank';a.rel='noopener noreferrer';a.textContent=text+' ↗';a.href=mapUrl('');return a;
     };
-    naverLink=link('네이버 지도','naver');kakaoLink=link('카카오맵','kakao');googleLink=link('Google 지도','google');
-    actions.append(searchBtn,naverLink,kakaoLink,googleLink);
+    naverLink=link('네이버 지도');
+    actions.append(searchBtn,naverLink);
     locLabel.append(actions);location.addEventListener('input',refreshMapLinks);
     const addrDialog=makeModal('cdAddressDialog','도로명·지번 주소 검색');
     addrDialog.classList.add('cd-address-dialog');
@@ -221,7 +221,7 @@
       }catch(e){
         addressWrap.replaceChildren();
         const msg=document.createElement('p');msg.className='cd-address-loading';msg.textContent=e.message+' 직접 주소를 입력하거나 지도 링크를 이용해 주세요.';
-        const fallback=link('네이버 지도에서 검색','naver');fallback.href=mapUrl(location.value,'naver');
+        const fallback=link('네이버 지도에서 검색','naver');fallback.href=mapUrl(location.value);
         addressWrap.append(msg,fallback);
       }
     });
