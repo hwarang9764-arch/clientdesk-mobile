@@ -1,0 +1,49 @@
+/* Client Desk Mobile v1.2.9 — calendar editor improvements */
+#eventDialog .cd-time-input{cursor:pointer!important;min-height:44px;caret-color:transparent;touch-action:manipulation;}
+#eventDialog .cd-time-input:disabled{cursor:not-allowed!important;opacity:.55;}
+#eventDialog .cd-address-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;align-items:center;}
+#eventDialog .cd-address-actions button,#eventDialog .cd-address-actions a{
+ display:inline-flex;align-items:center;justify-content:center;min-height:34px;
+ padding:7px 10px;border-radius:9px;border:1px solid var(--line,#dddced);
+ background:var(--surface,#fff);color:var(--text,#424058);font-size:12px;font-weight:650;
+ line-height:1.2;text-decoration:none;white-space:nowrap;cursor:pointer;
+}
+#eventDialog .cd-address-actions .cd-address-search{color:#6550c4;background:#f1edfe;border-color:#dcd3fa;}
+:root[data-theme="dark"] #eventDialog .cd-address-actions button,
+:root[data-theme="dark"] #eventDialog .cd-address-actions a{background:#303447;color:#e6e0f9;border-color:#4c5167;}
+:root[data-theme="dark"] #eventDialog .cd-address-actions .cd-address-search{background:#483d6e;color:#e2d7ff;border-color:#69588c;}
+.cd-tool-modal{
+ box-sizing:border-box;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+ width:min(350px,calc(100vw - 30px));max-width:calc(100vw - 30px);max-height:min(84dvh,650px);
+ margin:0;padding:16px;border-radius:17px;border:1px solid #e6e2f4;
+ background:#fff;color:#282843;box-shadow:0 20px 70px rgba(18,16,41,.24);
+}
+.cd-tool-modal::backdrop{background:rgba(12,14,27,.48);backdrop-filter:blur(2px);}
+.cd-tool-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px;font-size:14px;}
+.cd-tool-close{flex:0 0 auto;border:none;background:transparent;color:#8a829d;font-size:25px;min-width:34px;min-height:34px;border-radius:8px;cursor:pointer;}
+.cd-time-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 4px;}
+.cd-time-cols section{min-width:0;}
+.cd-time-label{display:block;margin-bottom:9px;color:#7a7795;text-align:center;font-size:12px;}
+.cd-time-col{display:flex;flex-direction:column;align-items:stretch;gap:0;height:min(250px,40dvh);overflow-y:auto;
+ scroll-snap-type:y proximity;overscroll-behavior:contain;background:#f4f1fb;border-radius:11px;padding:4px;
+ scrollbar-color:#c7c3d1 transparent;scrollbar-width:thin;}
+.cd-time-col button{flex:0 0 38px;min-height:38px;border:0;border-radius:7px;background:transparent;color:#24233e;
+ font-size:13px;scroll-snap-align:center;cursor:pointer;}
+.cd-time-col button.chosen{background:#6a55c6;color:#fff;font-weight:750;}
+.cd-time-foot{display:flex;align-items:center;justify-content:space-between;margin-top:15px;padding-top:12px;border-top:1px solid #e8e4f1;}
+.cd-time-selected{font-size:16px;font-variant-numeric:tabular-nums;}
+.cd-tool-primary{background:#6c55c8;color:white;padding:9px 17px;border:0;border-radius:9px;min-height:36px;font-weight:700;cursor:pointer;}
+.cd-address-dialog{width:min(480px,calc(100vw - 24px));height:min(620px,calc(100dvh - 30px));display:flex;flex-direction:column;}
+.cd-address-dialog:not([open]){display:none;}
+.cd-address-hint{font-size:12px;line-height:1.55;color:#6d687e;margin:0 0 12px;}
+.cd-address-embed{flex:1;min-height:300px;overflow:hidden;border:1px solid #e2ddea;border-radius:9px;background:#f8f6ff;}
+.cd-address-loading{font-size:13px;padding:15px;line-height:1.6;color:#625982;}
+.cd-address-embed .cd-map-link{display:inline-block;margin:8px 16px;color:#6751c8;}
+:root[data-theme="dark"] .cd-tool-modal{background:#272b38;color:#ecedf6;border-color:#50556b;box-shadow:0 25px 80px rgba(0,0,0,.55);}
+:root[data-theme="dark"] .cd-tool-close,:root[data-theme="dark"] .cd-time-label{color:#b9bbcc;}
+:root[data-theme="dark"] .cd-time-col{background:#1d2230;}
+:root[data-theme="dark"] .cd-time-col button{color:#e4e3f0;}
+:root[data-theme="dark"] .cd-time-col button.chosen{color:white;background:#7965d5;}
+:root[data-theme="dark"] .cd-time-foot{border-color:#424658;}
+:root[data-theme="dark"] .cd-address-hint{color:#c1bdd1;}
+@media(max-width:420px){#eventDialog .cd-address-actions button,#eventDialog .cd-address-actions a{font-size:11px;padding:7px 9px;}}
