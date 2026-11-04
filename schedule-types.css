@@ -115,22 +115,34 @@
  border-left:3px solid color-mix(in srgb,var(--cd-event-fg) 76%,var(--cd-event-bg))!important;
 }
 
-/* v1.2.17: type colour follows category and appears directly in the title input. */
+/* v1.2.18: use one round colour control, no decorative square. */
 #eventDialog .cd28-hidden-native-color-label{display:none!important;}
 #eventDialog .cd28-title-input-wrap{display:block;position:relative;width:100%;min-width:0;}
-#eventDialog .cd28-title-input-wrap .cd28-title-input{box-sizing:border-box;width:100%;padding-right:60px!important;}
-#eventDialog .cd28-title-input-wrap .cd28-title-color-button{
-  all:unset;box-sizing:border-box!important;position:absolute;right:9px;top:50%;transform:translateY(-50%);
-  display:grid!important;place-items:center!important;width:44px!important;height:44px!important;
-  border:1px solid #dfdbe9!important;border-radius:13px!important;background:#fff!important;
-  box-shadow:0 1px 5px #15112413!important;cursor:pointer!important;z-index:1!important;
+#eventDialog .cd28-title-input-wrap .cd28-title-input{box-sizing:border-box;width:100%;padding-right:53px!important;}
+#eventDialog .cd28-mobile-circle-picker{
+  all:unset;box-sizing:border-box!important;position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  display:grid!important;place-items:center!important;width:32px!important;height:32px!important;
+  background:transparent!important;border:0!important;border-radius:50%!important;
+  box-shadow:none!important;cursor:pointer!important;z-index:2!important;
 }
-#eventDialog .cd28-title-input-wrap .cd28-title-color-button .cd28-title-color-dot{
-  display:grid;place-items:center;border-radius:50%;width:29px;height:29px;
-  background:var(--cd28-bg);color:var(--cd28-fg);border:1px solid #7b70a33d;
-  font:800 11px/1 system-ui,sans-serif;
+#eventDialog .cd28-title-color-dot{
+  display:block;width:26px;height:26px;border-radius:50%;
+  background:var(--cd28-bg);border:2px solid color-mix(in srgb,var(--cd28-fg) 40%,#d1cce0);
+  box-shadow:0 1px 4px #18142b26,inset 0 1px 1px #fff7;
 }
-#eventDialog .cd28-title-input-wrap .cd28-title-color-button:focus-visible{outline:3px solid #8a76e4;outline-offset:2px;}
-:root[data-theme="dark"] #eventDialog .cd28-title-input-wrap .cd28-title-color-button{
- background:#282c3c!important;border-color:#52516a!important;
+#eventDialog .cd28-mobile-circle-picker:focus-visible{outline:3px solid #8a76e4;outline-offset:3px;}
+
+/* v1.2.19 — even 2px on all four sides; remove the extra inset stripe. */
+#dayEvents .event-card[data-cd28-colored="1"]{
+ border:2px solid color-mix(in srgb,var(--cd-event-fg) 65%,var(--cd-event-bg))!important;
+ border-left-width:2px!important;border-right-width:2px!important;
+ border-top-width:2px!important;border-bottom-width:2px!important;
+ box-shadow:none!important;outline:0!important;
+ background-image:none!important;
 }
+#dayEvents .event-card[data-cd28-colored="1"]::before,
+#dayEvents .event-card[data-cd28-colored="1"]::after{content:none!important;display:none!important;}
+/* Allow touch dragging by its handle without interfering with text entry. */
+.cd-type-row .cd-type-drag{flex:0 0 30px;touch-action:none;cursor:grab;border:0;background:transparent;color:#8b80a6;font-size:19px;line-height:1;padding:4px 2px;user-select:none;}
+.cd-type-row.cd-type-dragging{opacity:.55;outline:2px dashed #8171d4;outline-offset:2px;}
+@media(max-width:520px){.cd-type-row{grid-template-columns:27px 14px minmax(0,1fr) 45px 40px 30px!important;gap:5px!important;}.cd-type-row .cd-type-drag{width:26px;min-width:0;}}

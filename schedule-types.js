@@ -30,7 +30,7 @@
  window.ClientDeskPalette=Object.freeze({version:'28.1',colors,get,openPicker});
 })();
 
-/* Client Desk Mobile v1.2.17 – schedule timing, editable types and default colours.
+/* Client Desk Mobile v1.2.19 – schedule timing, editable types and default colours.
    Type definitions are stored on this device; event type ID/name/colour are
    stored in Google Calendar extendedProperties.private for interoperability. */
 (()=>{
@@ -63,7 +63,7 @@
   }
   let categories=load(),lastEventId='',openMode='',openVersion=0,explicitEditorColor=false;
   const eventCache=new Map();
-  function store(){try{localStorage.setItem(KEY,JSON.stringify(categories));}catch(e){console.warn('일정 종류 저장 실패',e);}}
+  function store(){try{localStorage.setItem(KEY,JSON.stringify(categories));window.ClientDeskCategorySync?.notifySaved?.();}catch(e){console.warn('일정 종류 저장 실패',e);}}
   function category(id){return categories.find(c=>c.id===id);}
   function nameTaken(name,exclude=''){return categories.some(c=>c.id!==exclude&&c.name===name);}
   function report(msg){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.classList.add('visible');setTimeout(()=>el.classList.remove('visible'),2800);}
@@ -136,7 +136,7 @@
   inlinePicker.querySelector('.cd-type-picker-apply').addEventListener('click',()=>{
     const c=category(editingCategory);if(!c)return hideInlinePicker();
     c.color=selectedCategoryColor;store();
-    if(type.value===c.id&&openMode==='new')setEditorColor(c.color);
+    if(type.value===c.id&&openMode==='new'&&!explicitEditorColor)setEditorColor(c.color,'auto');
     hideInlinePicker();draw();report('기본색을 저장했습니다.');
   });
 
@@ -145,7 +145,7 @@
     rows.replaceChildren();
     categories.forEach(c=>{
       const row=document.createElement('div');row.className='cd-type-row';row.dataset.id=c.id;
-      row.innerHTML=`<span class="cd-type-swatch" style="background:${COLOR_MAP[c.color]}"></span>
+      row.innerHTML=`<button type="button" class="cd-type-drag" aria-label="${escapeHTML(c.name)} 순서 이동" title="드래그하여 순서 변경">⠿</button><span class="cd-type-swatch" style="background:${COLOR_MAP[c.color]}"></span>
        <input class="cd-type-name" maxlength="35" value="${escapeHTML(c.name)}" aria-label="${escapeHTML(c.name)} 이름 변경">
        <button type="button" class="cd-type-color cd28-manager-trigger" aria-label="${escapeHTML(c.name)} 기본색 선택" title="28가지 색상 중 선택">${colorChip(c.color)}</button>
        <button type="button" class="cd-type-save" title="이름 변경 저장">저장</button>
@@ -153,6 +153,39 @@
       rows.append(row);
     });
   }
+
+  // Works with mouse and touch pointers. Only the handle initiates dragging;
+  // the text inputs, colour palette and delete buttons remain usable.
+  let drag=null;
+  rows.addEventListener('pointerdown',e=>{
+    const handle=e.target.closest('.cd-type-drag');if(!handle)return;
+    const row=handle.closest('.cd-type-row');if(!row)return;
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    drag={pointerId:e.pointerId,row,lastId:row.dataset.id,changed:false};
+    row.classList.add('cd-type-dragging');
+    try{handle.setPointerCapture(e.pointerId);}catch{}
+    e.preventDefault();
+  });
+  rows.addEventListener('pointermove',e=>{
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('.cd-type-row');
+    if(!target||target===drag.row||target.parentElement!==rows)return;
+    const halfway=target.getBoundingClientRect().top+target.offsetHeight/2;
+    rows.insertBefore(drag.row,e.clientY>halfway?target.nextSibling:target);
+    drag.changed=true;
+  });
+  function endDrag(e){
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    drag.row.classList.remove('cd-type-dragging');
+    if(drag.changed){
+      const desired=[...rows.querySelectorAll('.cd-type-row')].map(r=>r.dataset.id);
+      categories=desired.map(id=>category(id)).filter(Boolean);
+      store();refreshSelect(type.value,true);
+      report('일정 종류 순서를 저장했습니다.');
+    }
+    drag=null;
+  }
+  rows.addEventListener('pointerup',endDrag);rows.addEventListener('pointercancel',endDrag);
   function openManager(){hideInlinePicker();draw();if(!manager.open)manager.showModal();}
   btn.addEventListener('click',openManager);
   settingsPanel.querySelector('.cd-type-open').addEventListener('click',openManager);
@@ -181,7 +214,7 @@
       if(categories.length<=1){report('일정 종류는 최소 한 개가 필요합니다.');return;}
       if(!confirm(`‘${c.name}’ 종류를 삭제하시겠습니까? 기존 일정은 삭제되지 않습니다.`))return;
       categories=categories.filter(x=>x.id!==c.id);store();refreshSelect(type.value);if(editingCategory===c.id)hideInlinePicker();draw();
-      if(dialog.open&&openMode==='new')setEditorColor(category(type.value)?.color||'white');
+      if(dialog.open&&openMode==='new'&&!explicitEditorColor)setEditorColor(category(type.value)?.color||'white','auto');
       report('일정 종류를 삭제했습니다.');
     }
   });
@@ -190,7 +223,7 @@
   for(const c of Palette.colors){if(![...color.options].some(o=>o.value===c.id))color.add(new Option(c.label,c.id));}
   const nativeColorLabel=color.closest('label');
   const editorButton=document.createElement('button');editorButton.type='button';
-  editorButton.className='cd28-event-color-trigger cd28-title-color-button';
+  editorButton.className='cd28-title-color-button cd28-mobile-circle-picker';
   editorButton.setAttribute('aria-label','일정 색상 선택');editorButton.title='일정 색상 직접 선택';
   // Place the existing picker beside the TITLE field; keep the native select for app.js.
   const summaryInput=field('summary');
@@ -201,14 +234,40 @@
   }
   if(nativeColorLabel){color.classList.add('cd28-native-color-select');nativeColorLabel.classList.add('cd28-hidden-native-color-label');}
   function syncEditorColor(){const c=Palette.get(color.value)||Palette.get('white');
-    editorButton.innerHTML=`<span class="cd28-title-color-dot" style="--cd28-bg:${c.bg};--cd28-fg:${c.fg}">Aa</span>`;
+    editorButton.innerHTML=`<span class="cd28-title-color-dot" style="--cd28-bg:${c.bg};--cd28-fg:${c.fg}" aria-hidden="true"></span>`;
     editorButton.setAttribute('aria-label',c.label+' 색상 선택');editorButton.title='일정 색상: '+c.label;
   }
-  function setEditorColor(id,source='auto'){if(!Palette.get(id))return;color.value=id;explicitEditorColor=source==='manual';syncEditorColor();color.dispatchEvent(new Event('change',{bubbles:false}));}
+  function setEditorColor(id,source='auto'){
+    if(!Palette.get(id))return;
+    color.value=id;
+    explicitEditorColor=source==='manual';
+    form.dataset.cdColorSource=source==='manual'?'manual':'type';
+    dialog.dataset.cdColorSource=form.dataset.cdColorSource;
+    dialog.dataset.cdColorId=id;
+    syncEditorColor();
+    // Native select stays in sync for app.js serialization; synthetic change must
+    // never be confused with a deliberate manual selection.
+    color.dispatchEvent(new Event('change',{bubbles:false}));
+  }
   editorButton.addEventListener('click',()=>Palette.openPicker(color.value,(id)=>setEditorColor(id,'manual')));
-  color.addEventListener('change',syncEditorColor);
+  color.addEventListener('change',e=>{
+    if(e.isTrusted){explicitEditorColor=true;form.dataset.cdColorSource='manual';dialog.dataset.cdColorSource='manual';dialog.dataset.cdColorId=color.value;}
+    syncEditorColor();
+  });
   syncEditorColor();
-  type.addEventListener('change',()=>{const c=category(type.value);if(c)setEditorColor(c.color,'auto');});
+  // Rule: EVERY type change resets to that type's default. A user-selected
+  // colour thereafter remains independent until the next type change.
+  let changeGeneration=0;
+  type.addEventListener('change',()=>{
+    const currentId=type.value,epoch=++changeGeneration;
+    const c=category(currentId);if(c)setEditorColor(c.color,'auto');
+    // Some original handlers mutate the colour synchronously after our handler.
+    // Reapply only if the user has not manually chosen a colour since then.
+    queueMicrotask(()=>{
+      if(epoch!==changeGeneration||type.value!==currentId||explicitEditorColor)return;
+      const latest=category(currentId);if(latest)setEditorColor(latest.color,'auto');
+    });
+  });
   // Preserve the explicitly selected colour for edited and copied events.
   function onDialogOpen(){
     const version=++openVersion;
@@ -291,6 +350,14 @@
     }
     return response;
   };
+  window.ClientDeskCategorySync?.subscribe?.(remote=>{
+    if(!Array.isArray(remote)||!remote.length)return;
+    categories=remote.filter(validCategory).map(c=>({id:c.id,name:c.name,color:Palette.get(c.color)?.id||'lavender'}));
+    const selected=type.value;refreshSelect(selected,true);
+    if(manager.open)draw();
+    // Change the colour only when the type REALLY changes; a remote refresh
+    // must not overwrite an event's manually chosen colour.
+  });
   // Rendering is handled by cd-event-color-bridge.js, which also colours
   // expanded month chips that do not carry data-event-id attributes.
   function queueDecorate(){window.ClientDeskEventColorBridge?.queuePaint?.();}
@@ -322,6 +389,23 @@
     el?.addEventListener('input',reconcile);el?.addEventListener('change',reconcile);
   }
   allDay?.addEventListener('change',reconcile);
+
+  // Custom wheel pickers can set input.value without firing change/input.
+  // Watch only changes to the START timestamp while this editor is open.
+  let observedStart='',wasOpen=false;
+  setInterval(()=>{
+    const opened=!!dialog.open;
+    if(!opened){wasOpen=false;observedStart='';return;}
+    const current=(startDate?.value||'')+'T'+(startTime?.value||'');
+    if(!wasOpen){wasOpen=true;observedStart=current;return;}
+    if(current!==observedStart){observedStart=current;reconcile();}
+  },250);
+  dialog.addEventListener('click',e=>{
+    if(e.target.closest('button')?.textContent?.trim()==='적용'){
+      // Let the wheel picker commit its selection first.
+      setTimeout(()=>{observedStart=(startDate?.value||'')+'T'+(startTime?.value||'');reconcile();},0);
+    }
+  },true);
   // PC and mobile helpers can share the same regression-testable pure function.
   window.ClientDeskScheduleTiming={parts,dateValue,timeValue,adjust:(date,time)=>{
     const v=parts(date,time);if(!v)return null;const e=new Date(v.getTime()+1800000);return {date:dateValue(e),time:timeValue(e)};

@@ -53,14 +53,15 @@
          const root=openEditor();
          const priv={...data.extendedProperties?.private};
          const typeId=editorType(root)?.value||priv.clientDeskType;
-         const selected=editorColor(root)?.value;
+         const manual=root?.dataset.cdColorSource==='manual'||root?.querySelector('form')?.dataset.cdColorSource==='manual';
+         const selected=manual?(root?.dataset.cdColorId||editorColor(root)?.value):(editorColor(root)?.value||root?.dataset.cdColorId);
          const cat=category(typeId);
          // The selected 28-colour entry takes priority, not Google's colorId.
          // Recover legacy auto-white when a non-white category was selected.
          let color=Palette.get(selected)||Palette.get(priv.clientDeskColor)||Palette.get(cat?.color);
-         if(color?.id==='white'&&cat?.color!=='white'&&priv.clientDeskColorSource!=='manual')color=Palette.get(cat.color)||color;
+         if(color?.id==='white'&&cat?.color!=='white'&&!manual&&priv.clientDeskColorSource!=='manual')color=Palette.get(cat.color)||color;
          if(cat){priv.clientDeskType=cat.id;priv.clientDeskTypeName=cat.name;priv.clientDeskTypeDefaultColor=cat.color;}
-         if(color){priv.clientDeskColor=color.id;priv.clientDeskColorBg=color.bg;priv.clientDeskColorText=color.fg;data.colorId=googleColor[color.id]||'3';}
+         if(color){priv.clientDeskColorSource=manual?'manual':'type';priv.clientDeskColor=color.id;priv.clientDeskColorBg=color.bg;priv.clientDeskColorText=color.fg;data.colorId=googleColor[color.id]||'3';}
          data.extendedProperties={...data.extendedProperties,private:priv};
          req={...init,body:JSON.stringify(data)};
        }
@@ -165,5 +166,5 @@
      get.onsuccess=()=>{readEvents(get.result);db.close();};get.onerror=()=>db.close();};
  }catch{}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',readCached,{once:true});else readCached();
- window.ClientDeskEventColorBridge=Object.freeze({version:'1.2.16',readEvents,queuePaint,paint,schemeFor,eventsOn,byId});
+ window.ClientDeskEventColorBridge=Object.freeze({version:'1.2.19',readEvents,queuePaint,paint,schemeFor,eventsOn,byId});
 })();
