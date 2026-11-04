@@ -30,7 +30,7 @@
  window.ClientDeskPalette=Object.freeze({version:'28.1',colors,get,openPicker});
 })();
 
-/* Client Desk Mobile v1.2.14 – schedule timing, editable types and default colours.
+/* Client Desk Mobile v1.2.15 – schedule timing, editable types and default colours.
    Type definitions are stored on this device; event type ID/name/colour are
    stored in Google Calendar extendedProperties.private for interoperability. */
 (()=>{

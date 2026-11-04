@@ -100,3 +100,13 @@
   .cd-type-row .cd-type-save{padding:5px 3px;font-size:11px;min-width:0;}
   .cd-type-row .cd-type-delete{min-width:26px;padding:4px 2px;justify-self:center;}
 }
+
+/* v1.2.15: make custom category colour visible on schedule chips / day entries. */
+#monthGrid [data-cd28-colored="1"],#dayEvents [data-cd28-colored="1"],
+#calendarView [data-cd28-colored="1"],[data-view="calendar"] [data-cd28-colored="1"]{
+  background:var(--cd-event-bg)!important;
+  color:var(--cd-event-fg)!important;
+  border-color:color-mix(in srgb,var(--cd-event-bg) 70%,#999)!important;
+}
+#monthGrid [data-cd28-colored="1"] *,#dayEvents [data-cd28-colored="1"] *,
+#calendarView [data-cd28-colored="1"] *{color:inherit!important}
