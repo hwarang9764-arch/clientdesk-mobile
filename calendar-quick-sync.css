@@ -1,0 +1,13 @@
+/* Client Desk Mobile 1.2.21 - Calendar-only compact sync bar */
+.cd-calendar-sync-row{display:flex;align-items:stretch;gap:9px;margin:0 0 17px;min-width:0;width:100%;box-sizing:border-box}
+.cd-calendar-status{display:flex;flex:1 1 auto;align-items:center;gap:8px;min-width:0;border:1px solid var(--border,#dde0ef);border-radius:13px;background:var(--surface,#f4f3fb);padding:10px 12px;min-height:42px;box-sizing:border-box;font-size:12px;color:var(--ink,#575776)}
+.cd-calendar-status-dot{flex-shrink:0!important;width:8px!important;height:8px!important}
+#cdCalendarStatusText{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+.cd-calendar-sync-button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;min-height:42px;border:1px solid #d8cff1;border-radius:13px;background:#efe9fd;color:#604abe;font-weight:700;font-size:12px;box-shadow:0 1px 1px #00000006;cursor:pointer}
+.cd-calendar-sync-button svg{width:17px;height:17px;flex:0 0 17px}
+.cd-calendar-sync-button:active{transform:translateY(1px)}
+.cd-calendar-sync-button:focus-visible{outline:2px solid #765aca;outline-offset:2px}
+body.cd-calendar-visible #statusBar{display:none!important}
+@media(max-width:360px){.cd-calendar-sync-row{gap:7px}.cd-calendar-status{padding:9px}.cd-calendar-sync-button{padding:0 9px}}
+html[data-theme=dark] .cd-calendar-status,body.dark .cd-calendar-status{background:#252a3b;border-color:#393e55;color:#d7d9ed}
+html[data-theme=dark] .cd-calendar-sync-button,body.dark .cd-calendar-sync-button{background:#42375e;border-color:#57477e;color:#e5dafe}
