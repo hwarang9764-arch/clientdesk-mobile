@@ -22,12 +22,56 @@
       window.getComputedStyle(calendar).display!=='none';
   }
   function updateView(){document.body.classList.toggle('cd-calendar-visible',isVisible());copyStatus();}
+  // Reconnect is NOT the same as Drive data synchronization. The old quick
+  // button only clicked #headerSync/#syncNow and never refreshed Google OAuth.
+  let busy=false;
+  function toast(message){
+    const el=document.getElementById('toast');
+    if(el){el.textContent=message;el.classList.add('visible');}
+  }
   sync.addEventListener('click',()=>{
-    // Use the existing header action; no duplicate network requests or tokens.
-    const existing=document.getElementById('headerSync')||document.getElementById('syncNow');
-    if(existing&&existing!==sync&&!existing.disabled){existing.click();return;}
-    const notice=document.getElementById('toast');
-    if(notice){notice.textContent='동기화 버튼을 사용할 수 없습니다. 설정에서 연결 상태를 확인해 주세요.';notice.classList.add('visible');setTimeout(()=>notice.classList.remove('visible'),3000);}
+    if(busy)return;
+    const connect=document.getElementById('connectGoogle');
+    const info=document.getElementById('googleInfo');
+    const oldSync=document.getElementById('headerSync')||document.getElementById('syncNow');
+    if(!connect){toast('Google 계정 연결 버튼을 찾지 못했습니다. 설정에서 연결을 확인해 주세요.');return;}
+    // Trigger the OAuth action synchronously inside a real user gesture so
+    // Google's popup can open on Android/iOS. Do not claim connection before verified.
+    if(connect.disabled){toast('Google 계정 연결이 진행 중입니다.');return;}
+    busy=true;sync.disabled=true;
+    const original=sync.title;
+    sync.title='Google 계정 다시 연결 중';
+    const before=info?.textContent||'';
+    let finished=false;
+    const complete=(ok,verified=true)=>{
+      if(finished)return;
+      finished=true;watcher?.disconnect();clearTimeout(timer);
+      busy=false;sync.disabled=false;sync.title=original;
+      if(ok){
+        if(verified){toast('Google 계정 연결을 확인했습니다. 동기화를 요청합니다.');
+          if(oldSync&&!oldSync.disabled&&oldSync!==sync)oldSync.click();}
+      }else{toast('Google 연결을 확인하지 못했습니다. 설정 → Google 계정 다시 연결을 확인해 주세요.');}
+    };
+    const looksConnected=t=>/Google\s*연결됨|연결됨|로그인\s*세션|connected/i.test(t)&&!/(연결되지|실패|오류|만료|disconnect)/i.test(t);
+    const watcher=info?new MutationObserver(()=>{
+      const current=info.textContent||'';
+      if(current!==before&&looksConnected(current))complete(true);
+      if(/실패|오류|만료|거부|취소/.test(current)&&current!==before)complete(false);
+    }):null;
+    if(watcher)watcher.observe(info,{childList:true,subtree:true,characterData:true});
+    const timer=setTimeout(()=>complete(false),25000);
+    try{connect.click();}catch(error){complete(false);return;}
+    // If an existing Google session is silently renewed, its status text may
+    // not change. Run the legacy sync action as a fallback, without claiming
+    // authentication succeeded; the host app reports its own API errors.
+    setTimeout(()=>{
+      if(finished)return;
+      if(looksConnected(info?.textContent||'')){
+        if(oldSync&&!oldSync.disabled&&oldSync!==sync)oldSync.click();
+        toast('Google 계정 재연결과 동기화를 요청했습니다. 결과를 확인해 주세요.');
+        complete(true,false);
+      }
+    },2200);
   });
   new MutationObserver(copyStatus).observe(status,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
   new MutationObserver(updateView).observe(calendar,{attributes:true,attributeFilter:['hidden','style','class','aria-hidden']});
