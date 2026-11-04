@@ -1,152 +1,169 @@
-/* Client Desk v1.2.15 / PC v0.6.29 – reliable event color bridge.
-   A type's 28-color default applies to the event editor, Google Calendar metadata,
-   and native Client Desk calendar rendering. No client/Drive records are touched. */
+/* Client Desk 1.2.16: same per-event colours on PC and mobile.
+   The colour is saved in Google Calendar extendedProperties.private; app-specific
+   28-colour display never depends on Google's reduced 11-colour palette. */
 (()=>{
  'use strict';
- if(window.__clientDeskEventColorBridge15)return;
- window.__clientDeskEventColorBridge15=true;
- const typesKey='wwtt_clientdesk_calendar_types_v2';
- const P=window.ClientDeskPalette;
- if(!P){console.warn('ClientDesk palette not ready');return;}
- const scheme=id=>P.get(id)||P.get('lavender');
- const eventStore=new Map();
- let paintQueued=false;
- const googlePalette={
-  white:'8',lilac:'3',lavender:'3',iceblue:'7',navy:'9',mint:'2',teal:'10',
-  sage:'2',green:'10',apricot:'6',pink:'4',red:'11',peach:'6',yellow:'5',
-  cream:'5',rose:'4',burgundy:'11',slate:'8',charcoal:'8',cocoa:'6',powder:'7',
-  pastelblue:'1',blue:'9',cyan:'7',midnight:'9',gray:'8',graphite:'8',black:'8'
- };
- function types(){try{const v=JSON.parse(localStorage.getItem(typesKey));return Array.isArray(v)?v:[];}catch{return [];}}
- function category(id){return types().find(c=>c.id===id);}
- function elementType(root){
-   if(!root)return null;
-   const direct=root.querySelector('select[name="type"],select[name="eventType"],select[name="scheduleType"],select[name="category"],select[id="eventType"],select[id="scheduleType"]');
-   if(direct)return direct;
-   return [...root.querySelectorAll('select')].find(x=>[...x.options].some(o=>/업무\s*일정|개인\s*일정|할\s*일/.test(o.textContent)));
+ if(window.__clientDeskEventColorBridge16)return;
+ window.__clientDeskEventColorBridge16=true;
+ const Palette=window.ClientDeskPalette;
+ if(!Palette)return;
+ const TYPE_KEY='wwtt_clientdesk_calendar_types_v2';
+ const byId=new Map();
+ let queued=false;
+ const GOOGLE_TO_PALETTE={1:'pastelblue',2:'green',3:'lavender',4:'rose',5:'yellow',6:'apricot',7:'iceblue',8:'gray',9:'navy',10:'teal',11:'red'};
+ function categories(){try{const rows=JSON.parse(localStorage.getItem(TYPE_KEY)||'[]');return Array.isArray(rows)?rows:[];}catch{return [];}}
+ function category(typeId){return categories().find(c=>c.id===typeId)||null;}
+ function schemeFor(ev){
+   if(!ev)return null;
+   const p=ev.extendedProperties?.private||{};
+   const selected=Palette.get(p.clientDeskColor);
+   const inherited=Palette.get(p.clientDeskTypeDefaultColor)||Palette.get(category(p.clientDeskType)?.color);
+   // v1.2.15 accidentally saved white for new events in some editor paths.
+   if(selected?.id==='white'&&p.clientDeskColorSource!=='manual'&&inherited?.id!=='white')return inherited;
+   return selected||inherited||(p.clientDeskColorBg&&p.clientDeskColorText?{id:'saved',bg:p.clientDeskColorBg,fg:p.clientDeskColorText}:null)||(ev.colorId?Palette.get(GOOGLE_TO_PALETTE[ev.colorId]):null);
  }
- function elementColor(root){return root?.querySelector('select[name="color"],select[name="eventColor"],select[name="scheduleColor"],select[id="eventColor"],input[name="color"]')||null;}
- function findEditor(){
-   const roots=[...document.querySelectorAll('dialog[open],.dialog[open],.event-modal.open,.modal.show,[role="dialog"][aria-hidden="false"]')].filter(n=>!n.id?.includes('TypeManager')&&!n.id?.includes('TypesManager'));
-   const editor=roots.find(r=>elementType(r))||roots.find(r=>r.querySelector('form[id*="event" i],input[name="summary"]'));
-   return editor||null;
- }
- function syncTypeDefault(root){
-   const t=elementType(root),color=elementColor(root);
-   const c=category(t?.value);
-   if(!t||!c)return;
-   const p=scheme(c.color);
-   if(color){
-     if(color.tagName==='SELECT'&&![...color.options].some(o=>o.value===p.id))color.add(new Option(p.label,p.id));
-     if(color.value!==p.id){color.value=p.id;color.dispatchEvent(new Event('change',{bubbles:true}));}
+ function readEvents(payload){
+   const records=Array.isArray(payload?.items)?payload.items:payload?.id?[payload]:[];
+   let changed=false;
+   for(const ev of records){
+     if(!ev?.id||ev.status==='cancelled')continue;
+     const prev=byId.get(ev.id)||{};
+     byId.set(ev.id,{...prev,...ev,extendedProperties:{...prev.extendedProperties,...ev.extendedProperties,
+       private:{...prev.extendedProperties?.private,...ev.extendedProperties?.private}}});
+     changed=true;
    }
-   root.dataset.cdTypeDefault=p.id;
-   root.style.setProperty('--cd-type-default-bg',p.bg);
-   root.style.setProperty('--cd-type-default-fg',p.fg);
+   if(changed)queuePaint();
  }
- // Preserve explicit custom choice after type selection. Type change ALWAYS selects its default.
- document.addEventListener('change',e=>{
-   const t=e.target;
-   if(t?.matches?.('select[name="type"],select[name="eventType"],select[name="scheduleType"],select[name="category"],select[id="eventType"],select[id="scheduleType"]')){
-     const root=t.closest('dialog,[role="dialog"],.event-modal,.modal')||t.closest('form');
-     if(root&&root.id!=='cdTypeManager'&&root.id!=='cdPcTypesManager')queueMicrotask(()=>syncTypeDefault(root));
-   }
- },false);
- const isCalendarUrl=url=>/https:\/\/(?:www\.)?googleapis\.com\/calendar\/v3\/calendars\/[^/?]+\/events(?:[/?#]|$)/i.test(url);
- const rawFetch=window.fetch.bind(window);
- window.fetch=async function(resource,options){
+ const isCal=url=>/^https:\/\/(?:www\.)?googleapis\.com\/calendar\/v3\/calendars\/[^/?]+\/events(?:[/?#]|$)/.test(url);
+ const googleColor={white:'8',lilac:'3',lavender:'3',iceblue:'7',navy:'9',mint:'2',teal:'10',sage:'2',green:'10',apricot:'6',pink:'4',red:'11',peach:'6',yellow:'5',cream:'5',rose:'4',burgundy:'11',slate:'8',charcoal:'8',cocoa:'6',powder:'7',pastelblue:'1',blue:'9',cyan:'7',midnight:'9',gray:'8',graphite:'8',black:'8'};
+ function editorType(root){return root?.querySelector('select[name="type"],select[name="eventType"],select[name="category"],select[name="scheduleType"]')||null;}
+ function editorColor(root){return root?.querySelector('select[name="color"],select[name="eventColor"],select[name="scheduleColor"]')||null;}
+ function openEditor(){return [...document.querySelectorAll('dialog[open],.event-modal.open,[role="dialog"][aria-hidden="false"]')].find(n=>n.id!=='cdTypeManager'&&n.id!=='cdPcTypesManager'&&editorType(n))||null;}
+ const sourceFetch=window.fetch.bind(window);
+ window.fetch=async (resource,init)=>{
    let url='';try{url=typeof resource==='string'?resource:resource?.url||'';}catch{}
-   if(!isCalendarUrl(url))return rawFetch(resource,options);
-   const method=String(options?.method||'GET').toUpperCase();
-   let next=options;
-   if(['POST','PATCH','PUT'].includes(method)&&typeof options?.body==='string'){
+   if(!isCal(url))return sourceFetch(resource,init);
+   const method=String(init?.method||'GET').toUpperCase();
+   let req=init;
+   if(['POST','PUT','PATCH'].includes(method)&&typeof init?.body==='string'){
      try{
-       const json=JSON.parse(options.body);
-       if(json&&typeof json.summary==='string'&&json.start&&json.end){
-         const root=findEditor();
-         const t=elementType(root),color=elementColor(root);
-         const original=json.extendedProperties?.private||{};
-         const chosenType=t?.value||original.clientDeskType||'';
-         const c=category(chosenType);
-         // The editor's chosen colour wins; when missing, apply the type default.
-         const chosen= P.get(color?.value)||P.get(original.clientDeskColor)||P.get(c?.color)||P.get('lavender');
-         json.extendedProperties ||= {};
-         json.extendedProperties.private ||= {};
-         const priv=json.extendedProperties.private;
-         if(c){priv.clientDeskType=c.id;priv.clientDeskTypeName=c.name;priv.clientDeskTypeDefaultColor=c.color;}
-         if(chosen){
-           priv.clientDeskColor=chosen.id;
-           priv.clientDeskColorBg=chosen.bg;
-           priv.clientDeskColorText=chosen.fg;
-           json.colorId=googlePalette[chosen.id]||'3';
-         }
-         next={...options,body:JSON.stringify(json)};
+       const data=JSON.parse(init.body);
+       // Never touch patches for event completion, trash or reminder settings only.
+       if(typeof data?.summary==='string'&&data?.start&&data?.end){
+         const root=openEditor();
+         const priv={...data.extendedProperties?.private};
+         const typeId=editorType(root)?.value||priv.clientDeskType;
+         const selected=editorColor(root)?.value;
+         const cat=category(typeId);
+         // The selected 28-colour entry takes priority, not Google's colorId.
+         // Recover legacy auto-white when a non-white category was selected.
+         let color=Palette.get(selected)||Palette.get(priv.clientDeskColor)||Palette.get(cat?.color);
+         if(color?.id==='white'&&cat?.color!=='white'&&priv.clientDeskColorSource!=='manual')color=Palette.get(cat.color)||color;
+         if(cat){priv.clientDeskType=cat.id;priv.clientDeskTypeName=cat.name;priv.clientDeskTypeDefaultColor=cat.color;}
+         if(color){priv.clientDeskColor=color.id;priv.clientDeskColorBg=color.bg;priv.clientDeskColorText=color.fg;data.colorId=googleColor[color.id]||'3';}
+         data.extendedProperties={...data.extendedProperties,private:priv};
+         req={...init,body:JSON.stringify(data)};
        }
-     }catch(err){console.warn('ClientDesk color metadata preparation failed',err);}
+     }catch(e){console.warn('ClientDesk colour serialization',e);}
    }
-   const response=await rawFetch(resource,next);
-   if(response?.ok){response.clone().json().then(readEvents).catch(()=>{});}
+   const response=await sourceFetch(resource,req);
+   if(response?.ok&&['GET','POST','PATCH','PUT'].includes(method)){
+     response.clone().json().then(readEvents).catch(()=>{});
+   }
    return response;
  };
- function readEvents(payload){
-   const events=Array.isArray(payload?.items)?payload.items:payload?.id?[payload]:[];
-   let updated=false;
-   for(const event of events){
-     if(!event?.id)continue;
-     const prior=eventStore.get(event.id)||{};
-     const merged={...prior,...event,extendedProperties:{...prior.extendedProperties,...event.extendedProperties,
-       private:{...prior.extendedProperties?.private,...event.extendedProperties?.private}}};
-     eventStore.set(event.id,merged);updated=true;
+ function activeDay(ev,day){
+   const start=ev.start?.date||ev.start?.dateTime?.slice(0,10);
+   if(!start||day<start)return false;
+   const end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||start;
+   if(ev.start?.date)return day<end;
+   // A timed event ending exactly midnight doesn't occupy the next day.
+   if(day===end&&/^T00:00/.test(ev.end?.dateTime?.slice(10)||''))return false;
+   return day<=end;
+ }
+ function sortEvents(a,b){
+   const ad=a.extendedProperties?.private?.clientDeskDone==='1',bd=b.extendedProperties?.private?.clientDeskDone==='1';
+   if(ad!==bd)return ad?1:-1;
+   const at=Date.parse(a.start?.dateTime||((a.start?.date||'')+'T00:00:00')),
+         bt=Date.parse(b.start?.dateTime||((b.start?.date||'')+'T00:00:00'));
+   return (at||0)-(bt||0)||String(a.summary||'').localeCompare(String(b.summary||''),'ko');
+ }
+ function eventsOn(date){return [...byId.values()].filter(ev=>ev.status!=='cancelled'&&ev.extendedProperties?.private?.clientDeskInTrash!=='1'&&activeDay(ev,date)).sort(sortEvents);}
+ function assign(node,c){
+   if(!node||!c)return;
+   if(node.dataset.cd28Color===c.id&&node.style.getPropertyValue('--cd-event-bg')===c.bg)return;
+   node.dataset.cd28Colored='1';node.dataset.cd28Color=c.id;
+   node.style.setProperty('--cd-event-bg',c.bg);
+   node.style.setProperty('--cd-event-fg',c.fg);
+   node.style.setProperty('--cd-event-color',c.bg);
+   node.style.setProperty('--cd-event-text',c.fg);
+ }
+ function paintMobile(){
+   const list=document.getElementById('dayEvents');
+   if(list){
+     for(const card of list.querySelectorAll('.event-card')){
+       const id=card.querySelector('[data-event-id]')?.dataset.eventId;
+       assign(card,schemeFor(byId.get(id)));
+     }
    }
-   if(updated)queuePaint();
- }
- function eventScheme(e){
-   const v=e?.extendedProperties?.private||{};
-   return P.get(v.clientDeskColor)||P.get(v.clientDeskTypeDefaultColor)||P.get(category(v.clientDeskType)?.color)||null;
- }
- function decorateTarget(el,p){
-   if(!el||!p)return;
-   if(el.dataset.cdCurrentColor===p.id)return;
-   el.style.setProperty('--cd-event-color',p.bg);
-   el.style.setProperty('--cd-event-text',p.fg);
-   el.style.setProperty('--cd-event-bg',p.bg);
-   el.style.setProperty('--cd-event-fg',p.fg);
-   el.style.setProperty('background-color',p.bg,'important');
-   el.style.setProperty('color',p.fg,'important');
-   el.dataset.cdCurrentColor=p.id;
-   el.dataset.cd28Colored='1';
- }
- function matchesSummary(el,summary){
-   if(!summary)return false;
-   const a=(el.getAttribute('title')||el.getAttribute('aria-label')||el.textContent||'').replace(/\s+/g,' ').trim();
-   return !!a&&(a===summary||a.includes(summary));
- }
- function paintScope(parent){
-   if(!parent)return;
-   const events=[...eventStore.values()].filter(e=>e?.summary&&eventScheme(e));
-   if(!events.length)return;
-   const candidates=[...parent.querySelectorAll('[data-event-id],.event-card,.event-chip,.calendar-event,.calendar-chip,.event-pill,.cal-event,.day-event,.event-item,[class*="event-badge"],[class*="event-tag"]')];
-   for(const node of candidates){
-     let e=node.dataset.eventId?eventStore.get(node.dataset.eventId):null;
-     if(!e){const matches=events.filter(x=>matchesSummary(node,x.summary));if(matches.length===1)e=matches[0];}
-     if(e)decorateTarget(node,eventScheme(e));
-   }
- }
- function paint(){paintQueued=false;paintScope(document.getElementById('dayEvents'));paintScope(document.getElementById('monthGrid'));
-   // Also style PC schedule chips, if they expose an event id or summary.
-   for(const section of document.querySelectorAll('#calendarView,#calendarPanel,.calendar-view,.calendar-container,[data-view="calendar"]')){
-     paintScope(section);
+   const grid=document.getElementById('monthGrid');
+   if(grid){
+     for(const cell of grid.querySelectorAll('.day-cell[data-day]')){
+       const events=eventsOn(cell.dataset.day);
+       [...cell.querySelectorAll('.agenda-list .agenda-item')].forEach((n,i)=>assign(n,schemeFor(events[i])));
+       [...cell.querySelectorAll('.calendar-dots b')].forEach((n,i)=>{
+         const p=schemeFor(events[i]);if(p)n.style.setProperty('background-color',p.bg,'important');
+       });
+     }
    }
  }
- function queuePaint(){if(paintQueued)return;paintQueued=true;requestAnimationFrame(paint);}
- const calendarRoots=['#dayEvents','#monthGrid','#calendarView','#calendarPanel','.calendar-view','.calendar-container'];
+ function paintPc(){
+   const roots=document.querySelectorAll('#calendarPanel,#calendarView,.calendar-view,.calendar-container,[data-view="calendar"]');
+   // Some PC calendar views expose an event ID; others show only an event title.
+   // Title fallback is limited to UNIQUE titles so same-named events cannot be mismatched.
+   const byTitle=new Map();
+   for(const ev of byId.values()){
+     const title=String(ev.summary||'').trim();if(!title)continue;
+     if(byTitle.has(title))byTitle.set(title,null);else byTitle.set(title,ev);
+   }
+   for(const root of roots){
+     for(const el of root.querySelectorAll('[data-event-id]')){
+       const ev=byId.get(el.dataset.eventId);
+       if(!ev)continue;
+       const tgt=el.closest('.event-card,.event-chip,.agenda-item,.calendar-event,.day-event,.cal-event')||el;
+       assign(tgt,schemeFor(ev));
+     }
+     for(const el of root.querySelectorAll('.event-chip,.agenda-item,.calendar-event,.day-event,.cal-event,.event-pill,.calendar-chip')){
+       if(el.dataset.cd28Colored==='1'||el.querySelector('[data-event-id]'))continue;
+       const label=(el.getAttribute('title')||el.textContent||'').trim();
+       const ev=byTitle.get(label);
+       if(ev)assign(el,schemeFor(ev));
+     }
+   }
+ }
+ function paint(){queued=false;paintMobile();paintPc();}
+ function queuePaint(){if(queued)return;queued=true;requestAnimationFrame(paint);}
  const watched=new WeakSet();
- function watch(){for(const sel of calendarRoots){for(const root of document.querySelectorAll(sel)){
-   if(watched.has(root))continue;watched.add(root);
-   new MutationObserver(queuePaint).observe(root,{childList:true,subtree:true,characterData:true});
- }}queuePaint();}
+ function watch(){
+   for(const s of ['#monthGrid','#dayEvents','#calendarPanel','#calendarView','.calendar-view','.calendar-container']){
+     for(const node of document.querySelectorAll(s)){
+       if(watched.has(node))continue;
+       watched.add(node);
+       new MutationObserver(queuePaint).observe(node,{childList:true,subtree:true});
+     }
+   }
+   queuePaint();
+ }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch,{once:true});else watch();
- // Install on late-rendered PC/SPA elements, without polling or network requests.
- new MutationObserver(()=>{for(const s of calendarRoots){for(const node of document.querySelectorAll(s))if(!watched.has(node)){watch();return;}}}).observe(document.documentElement,{childList:true});
- window.ClientDeskEventColorBridge=Object.freeze({version:'1.2.15',eventStore,readEvents,category,eventScheme,syncTypeDefault,paint});
+ new MutationObserver(()=>watch()).observe(document.documentElement,{childList:true});
+ // Use the same cached Google Calendar snapshot as the native PWA for offline display.
+ function readCached(){try{
+   const req=indexedDB.open('wwtt-mobile-clientdesk-v1');
+   req.onupgradeneeded=()=>req.transaction?.abort();
+   req.onsuccess=()=>{const db=req.result;if(!db.objectStoreNames.contains('data')){db.close();return;}
+     const get=db.transaction('data','readonly').objectStore('data').get('calendar-snapshot-v1');
+     get.onsuccess=()=>{readEvents(get.result);db.close();};get.onerror=()=>db.close();};
+ }catch{}}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',readCached,{once:true});else readCached();
+ window.ClientDeskEventColorBridge=Object.freeze({version:'1.2.16',readEvents,queuePaint,paint,schemeFor,eventsOn,byId});
 })();

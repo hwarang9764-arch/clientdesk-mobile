@@ -30,7 +30,7 @@
  window.ClientDeskPalette=Object.freeze({version:'28.1',colors,get,openPicker});
 })();
 
-/* Client Desk Mobile v1.2.15 – schedule timing, editable types and default colours.
+/* Client Desk Mobile v1.2.16 – schedule timing, editable types and default colours.
    Type definitions are stored on this device; event type ID/name/colour are
    stored in Google Calendar extendedProperties.private for interoperability. */
 (()=>{
@@ -61,7 +61,7 @@
     }catch(e){console.warn('일정 종류 설정 복구 실패',e);}
     return DEFAULT.map(c=>({...c}));
   }
-  let categories=load(),lastEventId='',openMode='',openVersion=0;
+  let categories=load(),lastEventId='',openMode='',openVersion=0,explicitEditorColor=false;
   const eventCache=new Map();
   function store(){try{localStorage.setItem(KEY,JSON.stringify(categories));}catch(e){console.warn('일정 종류 저장 실패',e);}}
   function category(id){return categories.find(c=>c.id===id);}
@@ -194,30 +194,41 @@
   function syncEditorColor(){const c=Palette.get(color.value)||Palette.get('white');
     editorButton.innerHTML=`<span class="cd28-inline-color" style="--cd28-bg:${c.bg};--cd28-fg:${c.fg}">Aa</span><span>${escapeHTML(c.label)} · 색상 선택</span><span class="cd28-chevron">⌄</span>`;
   }
-  function setEditorColor(id){if(!Palette.get(id))return;color.value=id;syncEditorColor();color.dispatchEvent(new Event('change',{bubbles:false}));}
+  function setEditorColor(id,source='auto'){if(!Palette.get(id))return;color.value=id;explicitEditorColor=source==='manual';syncEditorColor();color.dispatchEvent(new Event('change',{bubbles:false}));}
   if(nativeColorLabel){color.classList.add('cd28-native-color-select');nativeColorLabel.append(editorButton);}
-  editorButton.addEventListener('click',()=>Palette.openPicker(color.value,setEditorColor));
+  editorButton.addEventListener('click',()=>Palette.openPicker(color.value,(id)=>setEditorColor(id,'manual')));
   color.addEventListener('change',syncEditorColor);
   syncEditorColor();
-  type.addEventListener('change',()=>{const c=category(type.value);if(c)setEditorColor(c.color);});
+  type.addEventListener('change',()=>{const c=category(type.value);if(c)setEditorColor(c.color,'auto');});
   // Preserve the explicitly selected colour for edited and copied events.
   function onDialogOpen(){
     const version=++openVersion;
-    openMode=document.getElementById('eventModalTitle')?.textContent?.includes('새 일정')?'new':'existing';
+    // Native app uses both '새 일정' and '일정 추가'; the previous single-label
+    // test classified '일정 추가' as editing and left the colour at white.
+    const heading=document.getElementById('eventModalTitle')?.textContent||'';
+    openMode=/(새\s*일정|일정\s*추가)/.test(heading)?'new':'existing';
     // The application's synchronous openEvent handler is finished when the observer runs.
     if(!dialog.open)return;
     if(!type.value)refreshSelect(category('personal')?'personal':categories[0]?.id);
     if(openMode==='new'){
-      const c=category(type.value);if(c)setEditorColor(c.color);
+      const c=category(type.value);if(c)setEditorColor(c.color,'auto');
     }else if(lastEventId){
       const cached=eventCache.get(lastEventId),props=cached?.extendedProperties?.private;
       const id=props?.clientDeskType;
-      if(props?.clientDeskColor&&Palette.get(props.clientDeskColor))setEditorColor(props.clientDeskColor);
+      // Keep a deliberately chosen white. For older events whose automatic
+      // colour was accidentally reset to white, recover the category default.
+      const chosen=Palette.get(props?.clientDeskColor);
+      const inherited=Palette.get(props?.clientDeskTypeDefaultColor)||Palette.get(category(id||type.value)?.color);
+      const repaired=(chosen?.id==='white'&&props?.clientDeskColorSource!=='manual'&&inherited)?inherited:chosen;
+      if(repaired)setEditorColor(repaired.id,props?.clientDeskColorSource==='manual'?'manual':'auto');
+      else if(inherited)setEditorColor(inherited.id,'auto');
       if(id&&!category(id)&&type.value!==id){
         if(![...type.options].some(o=>o.value===id))type.append(new Option(props.clientDeskTypeName||id,id));
         type.value=id;
       }
     }
+    // Update editor colour chip and app's hidden native colour select together.
+    syncEditorColor();
     if(version===openVersion)lastEventId='';
   }
   new MutationObserver(()=>{if(dialog.open)onDialogOpen();}).observe(dialog,{attributes:true,attributeFilter:['open']});
@@ -240,6 +251,7 @@
       }
     }
     if(anyAdded){store();refreshSelect(type.value);}
+    window.ClientDeskEventColorBridge?.readEvents?.(data);
     queueDecorate();
   }
   window.fetch=async function cdCategoryFetch(resource,opts){
@@ -256,7 +268,8 @@
           const c=category(type.value),chosen=Palette.get(color.value)||Palette.get(c?.color);
           if(c){payload.extendedProperties.private.clientDeskType=c.id;payload.extendedProperties.private.clientDeskTypeName=c.name;
             payload.extendedProperties.private.clientDeskTypeDefaultColor=c.color;}
-          if(chosen){payload.extendedProperties.private.clientDeskColor=chosen.id;
+          if(chosen){payload.extendedProperties.private.clientDeskColorSource=explicitEditorColor?'manual':'type';
+            payload.extendedProperties.private.clientDeskColor=chosen.id;
             payload.extendedProperties.private.clientDeskColorBg=chosen.bg;
             payload.extendedProperties.private.clientDeskColorText=chosen.fg;}
           next={...opts,body:JSON.stringify(payload)};
@@ -269,52 +282,9 @@
     }
     return response;
   };
-  // Colour dots on schedule cards and dates, without rebuilding the app's own calendar.
-  const dayEvents=document.getElementById('dayEvents'),monthGrid=document.getElementById('monthGrid');
-  function startDay(ev){return ev?.start?.date||ev?.start?.dateTime?.slice(0,10)||'';}
-  function endDay(ev){return ev?.end?.date||ev?.end?.dateTime?.slice(0,10)||startDay(ev);}
-  function activeOn(ev,day){const a=startDay(ev),b=endDay(ev);if(!a||!b)return false;if(ev?.start?.date)return a<=day&&day<b;return a<=day&&day<=b;}
-  function eventPalette(ev){const props=ev?.extendedProperties?.private||{};
-    return Palette.get(props.clientDeskColor)||Palette.get(category(props.clientDeskType)?.color)||Palette.get('white');}
-  function eventColor(ev){return eventPalette(ev).bg;}
-  let pending=false;
-  function decorate(){
-    pending=false;
-    dayEvents?.querySelectorAll('[data-event-id]').forEach(btn=>{
-      const ev=eventCache.get(btn.dataset.eventId);if(!ev)return;
-      const card=btn.closest('.event-card')||btn;
-      const scheme=eventPalette(ev);
-      card.style.setProperty('--cd-event-color',scheme.bg);
-      card.style.setProperty('--cd-event-text',scheme.fg);
-      card.dataset.cd28Colored='1';
-    });
-    monthGrid?.querySelectorAll('[data-event-id]').forEach(item=>{
-      const ev=eventCache.get(item.dataset.eventId);if(!ev)return;const c=eventPalette(ev);
-      item.style.setProperty('--cd-event-color',c.bg);
-      item.style.setProperty('--cd-event-text',c.fg);
-      item.dataset.cd28Colored='1';
-    });
-    monthGrid?.querySelectorAll('[data-day]').forEach(btn=>{
-      const arr=[...eventCache.values()].filter(ev=>activeOn(ev,btn.dataset.day)).sort((a,b)=>(a.start?.dateTime||a.start?.date||'').localeCompare(b.start?.dateTime||b.start?.date||''));
-      const dots=btn.querySelectorAll('.calendar-dots b');dots.forEach((d,i)=>{if(arr[i])d.style.background=eventColor(arr[i]);});
-    });
-  }
-  function queueDecorate(){if(pending)return;pending=true;requestAnimationFrame(decorate);}
-  if(dayEvents)new MutationObserver(queueDecorate).observe(dayEvents,{childList:true,subtree:true});
-  if(monthGrid)new MutationObserver(queueDecorate).observe(monthGrid,{childList:true,subtree:true});
-  // Read the existing calendar snapshot without modifying it.
-  try{
-    const dbReq=indexedDB.open('wwtt-mobile-clientdesk-v1');
-    dbReq.onupgradeneeded=()=>{try{dbReq.transaction.abort();}catch{}};
-    dbReq.onsuccess=()=>{
-      const db=dbReq.result;
-      if(!db.objectStoreNames.contains('data')){db.close();return;}
-      const req=db.transaction('data','readonly').objectStore('data').get('calendar-snapshot-v1');
-      req.onsuccess=()=>{observeEvents(req.result);db.close();};
-      req.onerror=()=>db.close();
-    };
-  }catch{}
-
+  // Rendering is handled by cd-event-color-bridge.js, which also colours
+  // expanded month chips that do not carry data-event-id attributes.
+  function queueDecorate(){window.ClientDeskEventColorBridge?.queuePaint?.();}
   // End time follows only if the user moves the start to/after the current end.
   // Use local date parts, not Date.parse with UTC conversion, for predictable rollover.
   const startDate=field('date'),endDate=field('endDate'),startTime=field('start'),endTime=field('end'),allDay=field('allDay');

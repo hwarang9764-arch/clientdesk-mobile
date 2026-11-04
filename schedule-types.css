@@ -28,7 +28,6 @@
 :root[data-theme="dark"] .cd-type-row input,:root[data-theme="dark"] .cd-type-row select,
 :root[data-theme="dark"] .cd-type-new input{background:#282c3c;color:#f0ecfa;border-color:#55536d;}
 :root[data-theme="dark"] .cd-type-description{color:#c2bed2;}
-#dayEvents .event-card{border-left:4px solid var(--cd-event-color,#b9b2d2)!important;}
 #monthGrid .calendar-dots b{transition:background-color .14s;}
 @media(max-width:370px){.cd-type-row{flex-wrap:wrap;}.cd-type-row .cd-type-name{flex:1 1 100px;}}
 
@@ -36,9 +35,6 @@
 #eventDialog select.cd28-native-color-select{position:absolute!important;opacity:0!important;width:1px!important;height:1px!important;pointer-events:none!important;}
 .cd-type-row button.cd-type-color{flex:0 0 48px;min-width:45px;padding:3px;background:transparent;color:inherit;border:1px solid #E2DBF1;}
 .cd-type-color .cd28-inline-color{height:30px;min-width:36px;width:36px;padding:0;border-radius:8px;}
-#dayEvents .event-card[data-cd28-colored="1"]{background:var(--cd-event-color)!important;color:var(--cd-event-text)!important;border-left:3px solid var(--cd-event-color)!important;}
-#dayEvents .event-card[data-cd28-colored="1"] :is(h2,h3,h4,p,small,.muted,.event-title,.event-time){color:inherit!important;}
-#monthGrid [data-event-id][data-cd28-colored="1"]{background:var(--cd-event-color)!important;color:var(--cd-event-text)!important;}
 
 /* Local 28-color palette styles: no extra stylesheet is required to open management. */
 /* Identical 28-color picker for PC and mobile; desktop screenshot-style 7x4 grid. */
@@ -101,12 +97,20 @@
   .cd-type-row .cd-type-delete{min-width:26px;padding:4px 2px;justify-self:center;}
 }
 
-/* v1.2.15: make custom category colour visible on schedule chips / day entries. */
-#monthGrid [data-cd28-colored="1"],#dayEvents [data-cd28-colored="1"],
-#calendarView [data-cd28-colored="1"],[data-view="calendar"] [data-cd28-colored="1"]{
-  background:var(--cd-event-bg)!important;
-  color:var(--cd-event-fg)!important;
-  border-color:color-mix(in srgb,var(--cd-event-bg) 70%,#999)!important;
+
+/* v1.2.16: type colours on native day cards and expanded month chips. */
+#dayEvents .event-card[data-cd28-colored="1"]{
+ background:var(--cd-event-bg)!important;
+ color:var(--cd-event-fg)!important;
+ border:2px solid color-mix(in srgb,var(--cd-event-fg) 80%,var(--cd-event-bg))!important;
+ border-radius:19px!important;
+ box-shadow:inset 4px 0 0 color-mix(in srgb,var(--cd-event-fg) 80%,var(--cd-event-bg))!important;
+ overflow:hidden;
 }
-#monthGrid [data-cd28-colored="1"] *,#dayEvents [data-cd28-colored="1"] *,
-#calendarView [data-cd28-colored="1"] *{color:inherit!important}
+#dayEvents .event-card[data-cd28-colored="1"] .event-card-text,
+#dayEvents .event-card[data-cd28-colored="1"] .event-card-text :is(strong,small){color:var(--cd-event-fg)!important;}
+#monthGrid .agenda-list .agenda-item[data-cd28-colored="1"]{
+ background-color:var(--cd-event-bg)!important;
+ color:var(--cd-event-fg)!important;
+ border-left:3px solid color-mix(in srgb,var(--cd-event-fg) 76%,var(--cd-event-bg))!important;
+}
