@@ -30,7 +30,7 @@
  window.ClientDeskPalette=Object.freeze({version:'28.1',colors,get,openPicker});
 })();
 
-/* Client Desk Mobile v1.2.16 – schedule timing, editable types and default colours.
+/* Client Desk Mobile v1.2.17 – schedule timing, editable types and default colours.
    Type definitions are stored on this device; event type ID/name/colour are
    stored in Google Calendar extendedProperties.private for interoperability. */
 (()=>{
@@ -190,12 +190,21 @@
   for(const c of Palette.colors){if(![...color.options].some(o=>o.value===c.id))color.add(new Option(c.label,c.id));}
   const nativeColorLabel=color.closest('label');
   const editorButton=document.createElement('button');editorButton.type='button';
-  editorButton.className='cd28-event-color-trigger';editorButton.setAttribute('aria-label','일정 색상 선택');
+  editorButton.className='cd28-event-color-trigger cd28-title-color-button';
+  editorButton.setAttribute('aria-label','일정 색상 선택');editorButton.title='일정 색상 직접 선택';
+  // Place the existing picker beside the TITLE field; keep the native select for app.js.
+  const summaryInput=field('summary');
+  if(summaryInput){
+    const wrap=document.createElement('span');wrap.className='cd28-title-input-wrap';
+    summaryInput.before(wrap);wrap.append(summaryInput,editorButton);
+    summaryInput.classList.add('cd28-title-input');
+  }
+  if(nativeColorLabel){color.classList.add('cd28-native-color-select');nativeColorLabel.classList.add('cd28-hidden-native-color-label');}
   function syncEditorColor(){const c=Palette.get(color.value)||Palette.get('white');
-    editorButton.innerHTML=`<span class="cd28-inline-color" style="--cd28-bg:${c.bg};--cd28-fg:${c.fg}">Aa</span><span>${escapeHTML(c.label)} · 색상 선택</span><span class="cd28-chevron">⌄</span>`;
+    editorButton.innerHTML=`<span class="cd28-title-color-dot" style="--cd28-bg:${c.bg};--cd28-fg:${c.fg}">Aa</span>`;
+    editorButton.setAttribute('aria-label',c.label+' 색상 선택');editorButton.title='일정 색상: '+c.label;
   }
   function setEditorColor(id,source='auto'){if(!Palette.get(id))return;color.value=id;explicitEditorColor=source==='manual';syncEditorColor();color.dispatchEvent(new Event('change',{bubbles:false}));}
-  if(nativeColorLabel){color.classList.add('cd28-native-color-select');nativeColorLabel.append(editorButton);}
   editorButton.addEventListener('click',()=>Palette.openPicker(color.value,(id)=>setEditorColor(id,'manual')));
   color.addEventListener('change',syncEditorColor);
   syncEditorColor();

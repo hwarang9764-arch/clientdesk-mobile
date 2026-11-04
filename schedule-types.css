@@ -114,3 +114,23 @@
  color:var(--cd-event-fg)!important;
  border-left:3px solid color-mix(in srgb,var(--cd-event-fg) 76%,var(--cd-event-bg))!important;
 }
+
+/* v1.2.17: type colour follows category and appears directly in the title input. */
+#eventDialog .cd28-hidden-native-color-label{display:none!important;}
+#eventDialog .cd28-title-input-wrap{display:block;position:relative;width:100%;min-width:0;}
+#eventDialog .cd28-title-input-wrap .cd28-title-input{box-sizing:border-box;width:100%;padding-right:60px!important;}
+#eventDialog .cd28-title-input-wrap .cd28-title-color-button{
+  all:unset;box-sizing:border-box!important;position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  display:grid!important;place-items:center!important;width:44px!important;height:44px!important;
+  border:1px solid #dfdbe9!important;border-radius:13px!important;background:#fff!important;
+  box-shadow:0 1px 5px #15112413!important;cursor:pointer!important;z-index:1!important;
+}
+#eventDialog .cd28-title-input-wrap .cd28-title-color-button .cd28-title-color-dot{
+  display:grid;place-items:center;border-radius:50%;width:29px;height:29px;
+  background:var(--cd28-bg);color:var(--cd28-fg);border:1px solid #7b70a33d;
+  font:800 11px/1 system-ui,sans-serif;
+}
+#eventDialog .cd28-title-input-wrap .cd28-title-color-button:focus-visible{outline:3px solid #8a76e4;outline-offset:2px;}
+:root[data-theme="dark"] #eventDialog .cd28-title-input-wrap .cd28-title-color-button{
+ background:#282c3c!important;border-color:#52516a!important;
+}
