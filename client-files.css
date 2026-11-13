@@ -1,0 +1,33 @@
+/* Client attachment-folder affordance */
+.cd-client-folder{appearance:none;display:inline-grid!important;place-items:center!important;box-sizing:border-box;flex-shrink:0;width:35px;height:32px;border:1px solid #d9d1ef!important;border-radius:9px!important;background:#f7f3ff!important;color:#6d58ba!important;padding:5px!important;cursor:pointer;vertical-align:middle;}
+.cd-client-folder:hover{background:#eae2ff!important;}
+.client-card-action-stack .cd-client-folder{width:100%;height:28px;}
+.cell-view .cd-client-folder{width:27px;height:27px;margin-right:5px;}
+.cd-files-dialog{border:0;border-radius:19px;padding:0;width:min(94vw,680px);max-height:90dvh;box-shadow:0 24px 70px #08082066;background:#fff;color:#24233d;}
+.cd-files-dialog::backdrop{background:#1614238c;backdrop-filter:blur(2px);}
+.cdf-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px 15px;border-bottom:1px solid #ebe6f4;}
+.cdf-top small{color:#7766b7;font-size:11px;font-weight:800;letter-spacing:.1em}.cdf-top h2{margin:5px 0 0;font-size:20px;line-height:1.35;overflow-wrap:anywhere;}
+.cdf-close{border:1px solid #e0dbea;border-radius:9px;background:transparent;color:#82789d;cursor:pointer;font-size:23px;width:35px;height:35px;}
+.cdf-scroll{padding:18px 22px 22px;overflow:auto;max-height:calc(90dvh - 85px);}
+.cdf-toolbar{display:flex;justify-content:flex-end;margin-bottom:14px;}.cdf-add{display:flex;align-items:center;gap:7px;background:#6a55c0;color:white;padding:11px 15px;font-weight:700;border-radius:10px;cursor:pointer;}
+.cdf-list{display:grid;gap:10px;}.cdf-empty{padding:22px;border:1px dashed #d8d0e8;text-align:center;border-radius:12px;color:#847b9a;margin:0;}
+.cdf-item{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px solid #e3dfee;border-radius:12px;padding:11px 12px;min-width:0;}
+.cdf-item-copy{min-width:0;flex:1;display:grid;gap:5px;}.cdf-item-title{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.cdf-item-copy small{color:#858196;}
+.cdf-item-actions{display:flex;gap:5px;}.cdf-item-btn{border:1px solid #e2ddee;background:#faf8ff;border-radius:8px;padding:7px 9px;cursor:pointer;color:#6855b0;font-size:12px;white-space:nowrap;}.cdf-delete{color:#b23852;background:#fff5f7;}
+.cdf-note{margin:13px 0 5px;color:#817b90;font-size:12px;line-height:1.65;}.cdf-feedback{min-height:18px;color:#6b57b6;font-size:12px;}
+html[data-theme=dark] .cd-files-dialog,html[data-theme=dark] .cdf-item{background:#252a3b;color:#eee8ff;border-color:#45485b;}
+html[data-theme=dark] .cdf-top{border-color:#44465b;}
+@media(max-width:420px){.cdf-item{align-items:flex-start;flex-direction:column}.cdf-item-actions{width:100%;justify-content:flex-end}.cdf-top h2{font-size:17px}}
+/* Exact four-sided outline, no additional start/end stripe from event colour plugins. */
+#dayEvents .event-card .event-actions button.event-done,
+#dayEvents .event-card[data-cd28-colored="1"] .event-actions button.event-done{
+  box-sizing:border-box!important;border-style:solid!important;border-width:1.5px!important;
+  border-color:#9bcbb9!important;border-radius:12px!important;
+  box-shadow:none!important;outline:none!important;background:#e8f7ee!important;
+  color:#26866c!important;background-image:none!important;
+}
+#dayEvents .event-card .event-actions button.event-done::before,
+#dayEvents .event-card .event-actions button.event-done::after{content:none!important;display:none!important;}
+#dayEvents .event-card .event-actions button.event-done[aria-pressed="true"]{
+  border-color:#aab0bd!important;background:#edf0f5!important;color:#5b6377!important;
+}

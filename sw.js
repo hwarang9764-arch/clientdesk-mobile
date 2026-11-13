@@ -1,6 +1,6 @@
 /* Static PWA shell. Existing Drive / Calendar / credential files are unchanged. */
-const CACHE_VERSION='wwtt-mobile-v1.2.22';
-const STATIC=['./','./index.html','./app.js','./style.css','./ui-fix.css','./ui-fix.js','./event-tools.css','./event-tools.js','./reminder-tools.css','./reminder-tools.js','./schedule-types.js','./schedule-types.css','./cd-category-cloud-sync.js','./cd-event-color-bridge.js','./calendar-quick-sync.js','./calendar-quick-sync.css','./drive-crypto.js','./holidays.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE_VERSION='wwtt-mobile-v1.2.24';
+const STATIC=['./','./index.html','./app.js','./style.css','./ui-fix.css','./ui-fix.js','./event-tools.css','./event-tools.js','./reminder-tools.css','./reminder-tools.js','./schedule-types.js','./schedule-types.css','./cd-category-cloud-sync.js','./cd-event-color-bridge.js','./calendar-quick-sync.js','./calendar-quick-sync.css','./review-vault.js','./review-vault.css','./client-files.js','./client-files.css','./drive-crypto.js','./holidays.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_VERSION).then(cache=>cache.addAll(STATIC))));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const name of await caches.keys())if(name.startsWith('wwtt-mobile-')&&name!==CACHE_VERSION)await caches.delete(name);await clients.claim();})()));
 self.addEventListener('message',event=>{if(event.data?.type==='ACTIVATE_UPDATE')self.skipWaiting();});

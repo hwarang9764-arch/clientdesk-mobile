@@ -1,0 +1,59 @@
+/* Standalone review-credential vault, styles isolated from existing Client Desk forms. */
+.rv-page {padding-bottom:38px;}
+.rv-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:15px;}
+.rv-top h1{margin:5px 0;font-size:clamp(21px,4vw,30px);color:var(--text,#26263d)}
+.rv-muted,.rv-privacy{color:var(--muted,#8585a1);font-size:13px;line-height:1.6}
+.rv-tools{display:flex;align-items:center;gap:14px;margin:16px 0;}
+.rv-tools input{flex:1;min-width:0;border:1px solid #dfddee;background:var(--panel,#fff);color:var(--text,#26263d);border-radius:12px;padding:12px 14px;font:inherit;}
+.rv-tools span{white-space:nowrap;color:#7968aa;font-weight:700;}
+.rv-primary,.rv-action,.rv-muted-btn,.rv-danger,.rv-close,.rv-icon-btn{cursor:pointer;border-radius:11px;padding:10px 14px;font:inherit;line-height:1.2;}
+.rv-primary{background:#6955bd;border:1px solid #6955bd;color:white;font-weight:700;}
+.rv-muted-btn{background:#fff;border:1px solid #dfdbee;color:#474562;}
+.rv-danger{background:#fff0f2;color:#c13e56;border:1px solid #edc7ce;margin-right:auto;}
+.rv-list{display:grid;gap:11px;}
+.rv-card{background:var(--panel,#fff);border:1px solid #dfddee;border-radius:18px;padding:14px;box-shadow:0 4px 13px #3330500b;min-width:0;}
+.rv-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:8px;}
+.rv-card-top strong{font-size:16px;overflow-wrap:anywhere;}
+.rv-row{display:grid;grid-template-columns:78px minmax(0,1fr) 42px;align-items:center;gap:8px;min-height:42px;border-top:1px solid #efecf6;}
+.rv-label{color:#86849d;font-weight:700;font-size:12px;}
+.rv-value{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;}
+.rv-action{background:#f5f1ff;border:1px solid #ded5f7;color:#6955ab;padding:7px 12px;}
+.rv-icon-action{font-size:16px;height:34px;padding:5px;}
+.rv-privacy{margin:20px 0 5px;}
+.rv-status{min-height:19px;color:#6654bd;font-size:12px;}
+.rv-error{color:#c13458}
+.rv-empty{text-align:center;padding:30px 12px;background:var(--panel,#fff);border-radius:16px;color:#85849c;border:1px dashed #d2cde2;}
+.rv-dialog{box-sizing:border-box;border:0;border-radius:20px;width:min(94vw,530px);max-height:min(92dvh,750px);padding:0;background:var(--panel,#fff);color:var(--text,#28243d);box-shadow:0 20px 65px #17142344;}
+.rv-dialog::backdrop{background:#10101a85;backdrop-filter:blur(2px)}
+.rv-dialog form{display:flex;flex-direction:column;max-height:min(92dvh,750px);}
+.rv-modal-heading,.rv-actions{display:flex;gap:9px;align-items:center;padding:18px 20px;background:var(--panel,#fff);flex-shrink:0;}
+.rv-modal-heading{justify-content:space-between;border-bottom:1px solid #e9e5f1;}
+.rv-modal-heading h2{font-size:19px;margin:0;}
+.rv-close{border:1px solid #e6e1ed;background:transparent;color:#8478a2;font-size:23px;padding:5px 12px;}
+.rv-body{padding:14px 20px;overflow:auto;display:grid;gap:14px;}
+.rv-body label{font-size:13px;color:#716b85;font-weight:700;display:grid;gap:6px;}
+.rv-body input{width:100%;min-width:0;box-sizing:border-box;background:var(--panel,#fff);color:var(--text,#292339);border:1px solid #ddd9e9;border-radius:10px;padding:11px;font:inherit;font-weight:500;}
+.rv-field-action{display:flex;align-items:center;gap:4px;}
+.rv-field-action input{flex:1;}
+.rv-icon-btn{background:#f1ebfe;color:#6654ae;border:1px solid #d9cdf2;flex-shrink:0;padding:10px;}
+.rv-actions{border-top:1px solid #ece8f4;justify-content:flex-end;}
+.rv-tab>span{font-size:22px;}
+@media (max-width:540px){.bottom-nav .rv-tab span{font-size:20px}.bottom-nav .rv-tab small{font-size:10px;white-space:nowrap}.rv-top .rv-primary{font-size:12px;padding:11px 12px}.rv-row{grid-template-columns:57px minmax(0,1fr) 37px}}
+html[data-theme='dark'] .rv-dialog,html[data-theme='dark'] .rv-card,html[data-theme='dark'] .rv-tools input,html[data-theme='dark'] .rv-modal-heading,html[data-theme='dark'] .rv-actions,html[data-theme='dark'] .rv-body input{background:#252a3b;color:#f2efff;border-color:#4a4a65;}
+html[data-theme='dark'] .rv-row,html[data-theme='dark'] .rv-modal-heading,html[data-theme='dark'] .rv-actions{border-color:#484760;}
+
+.rv-page[hidden]{display:none!important;}
+
+/* Review account order: clear drag handle and inline insertion marker. */
+.rv-card-top .rv-owner{flex:1;min-width:0;overflow-wrap:anywhere;}
+.rv-drag-handle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;height:36px;margin:-3px 1px -3px -4px;padding:0;background:#f7f3ff;border:1px solid #e3dcf1;border-radius:10px;color:#7662b6;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;}
+.rv-drag-handle:active{cursor:grabbing;}
+.rv-drag-handle:hover,.rv-drag-handle:focus-visible{background:#eae2ff;border-color:#9987d7;outline:2px solid #b6a6e7;outline-offset:1px;}
+.rv-card.rv-drag-source{opacity:.43;transform:scale(.992);}
+.rv-card.rv-drop-before{box-shadow:0 -4px 0 #7964d2,0 4px 13px #3330500b;}
+.rv-card.rv-drop-after{box-shadow:0 4px 0 #7964d2,0 4px 13px #3330500b;}
+.rv-list.rv-sort-active,.rv-list.rv-sort-active *{user-select:none;-webkit-user-select:none;}
+.rv-tab >span svg,.side-nav .nav-icon svg{display:block;margin:auto;}
+.rv-tab >span svg{width:21px;height:21px;}
+html[data-theme=dark] .rv-drag-handle{background:#34314c;color:#d7caff;border-color:#514869;}
+@media (max-width:540px){.rv-card-top .rv-owner{font-size:15px}.rv-drag-handle{flex-basis:34px;height:34px}}
