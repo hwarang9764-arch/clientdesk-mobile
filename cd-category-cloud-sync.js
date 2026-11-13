@@ -90,6 +90,7 @@
  window.addEventListener('focus',()=>{if(token&&Date.now()-lastPull>80000)queue(true);});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&token)queue(true);});
  window.ClientDeskCategorySync=Object.freeze({
+   getAccessToken(){return token;},
    subscribe(fn){subscribers.add(fn);return ()=>subscribers.delete(fn);},
    notifySaved,refresh(){lastPull=0;queue(true);},
    status(){return {authorized:!!token,lastCheck:lastPull};}
