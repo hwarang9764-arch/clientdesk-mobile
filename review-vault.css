@@ -78,3 +78,18 @@ html[data-theme=dark] .rv-drag-handle{background:#34314c;color:#d7caff;border-co
 .rv-field-action .rv-icon-btn{display:inline-flex;align-items:center;justify-content:center;min-width:39px;min-height:39px;padding:9px}
 html[data-theme='dark'] .rv-row .rv-icon-action{background:#49416a;color:#e6dcff;border-color:#6b5c96}
 @media(max-width:540px){.rv-row{grid-template-columns:54px minmax(0,1fr) 34px 34px;gap:5px}.rv-row .rv-icon-action{width:34px;height:34px;min-width:34px;min-height:34px}.rv-label{font-size:11px}.rv-value{font-size:13px}}
+
+/* v1.2.28 — compact review header and Google connection toolbar (mobile only). */
+#reviewView .rv-top-mobile{display:block;margin-bottom:12px;}
+#reviewView .rv-top-mobile>div{width:100%;min-width:0;}
+#reviewView .rv-title-line{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;}
+#reviewView .rv-title-line h1{margin:4px 0 5px;font-size:clamp(19px,5vw,27px);line-height:1.25;white-space:nowrap;}
+#reviewView .rv-title-line #rvAdd{flex:0 0 auto;padding:8px 10px;min-height:34px;font-size:12px;line-height:1.1;white-space:nowrap;border-radius:10px;}
+#reviewView .rv-top-mobile .rv-tools{display:flex;width:100%;margin:10px 0 0;gap:10px;align-items:center;}
+#reviewView .rv-top-mobile .rv-tools input{width:0;min-width:0;flex:1 1 0;padding:9px 12px;min-height:38px;box-sizing:border-box;}
+#reviewView .rv-top-mobile .rv-tools #rvCount{flex:0 0 auto;font-size:12px;}
+#reviewView .rv-cloud-actions{padding:8px 10px;gap:4px;margin:8px 0 10px;}
+#reviewView .rv-cloud-buttons{gap:7px;flex-wrap:nowrap;}
+#reviewView .rv-cloud-buttons button{box-sizing:border-box;min-width:0;min-height:32px;height:32px;flex:1 1 50%;padding:0 7px;font-size:11px;line-height:1.1;white-space:nowrap;border-radius:9px;}
+#reviewView .rv-cloud-actions .rv-google-state,#reviewView .rv-cloud-actions #rvCloudInfo{font-size:11px;line-height:1.3;}
+@media(max-width:350px){#reviewView .rv-title-line h1{font-size:19px}#reviewView .rv-title-line #rvAdd{padding-inline:7px;font-size:11px}#reviewView .rv-cloud-buttons button{font-size:10px}}

@@ -25,6 +25,22 @@
   page.innerHTML=`<div class="rv-top"><div><p class="eyebrow">REVIEW ACCOUNT MANAGEMENT</p><h1>리뷰 계정 관리</h1><p class="rv-muted">명의자별 로그인 정보와 인증용 연락처를 관리합니다. 손잡이를 드래그해 순서를 바꿀 수 있습니다.</p></div><button type="button" class="rv-primary" id="rvAdd">+ 계정 추가</button></div>
     <div class="rv-tools"><input id="rvSearch" type="search" placeholder="명의자·ID·휴대폰번호 검색" aria-label="리뷰 계정 검색" autocomplete="off"><span id="rvCount">0건</span></div>
     <div class="rv-cloud-actions" aria-label="리뷰 계정 Google Drive 연결과 동기화"><div class="rv-cloud-buttons"><button type="button" id="rvGoogleConnect" class="rv-muted-btn">Google 계정 연결</button><button type="button" id="rvCloudSync" class="rv-primary">↻ 지금 동기화</button></div><div class="rv-google-state" id="rvGoogleState" aria-live="polite">Google 연결 확인 중…</div><span id="rvCloudInfo" aria-live="polite">리뷰 계정은 암호화해 Google Drive와 동기화합니다.</span></div><div class="rv-list" id="rvList"></div><p class="rv-privacy">🔒 비밀번호는 기기에 암호화 저장하며 Google Drive에는 암호화된 내용만 전송합니다. 기존 거래처 동기화 PIN과 같은 Google 계정을 사용합니다.</p><p class="rv-status" id="rvStatus" role="status" aria-live="polite"></p>`;
+  // Mobile: keep the title and add-account button on one row; the search field
+  // takes the place of the obsolete help paragraph without duplicating controls.
+  if(isMobile){
+    const top=page.querySelector('.rv-top');
+    const info=top?.firstElementChild;
+    const heading=info?.querySelector('h1');
+    const add=page.querySelector('#rvAdd');
+    const search=page.querySelector('.rv-tools');
+    if(info&&heading&&add&&search){
+      const row=document.createElement('div');row.className='rv-title-line';
+      heading.replaceWith(row);row.append(heading,add);
+      info.querySelector('.rv-muted')?.remove();
+      info.append(search);
+      top.classList.add('rv-top-mobile');
+    }
+  }
   if(isMobile)mount.insertBefore(page,$('settingsView'));else mount.appendChild(page);
   const modal=document.createElement('dialog');modal.id='rvDialog';modal.className='rv-dialog';
   modal.innerHTML=`<form id="rvForm" autocomplete="off"><div class="rv-modal-heading"><h2 id="rvDialogTitle">리뷰 계정 추가</h2><button type="button" class="rv-close" id="rvClose" aria-label="닫기">×</button></div>
