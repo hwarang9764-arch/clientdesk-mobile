@@ -59,3 +59,22 @@ html[data-theme=dark] .rv-drag-handle{background:#34314c;color:#d7caff;border-co
 @media (max-width:540px){.rv-card-top .rv-owner{font-size:15px}.rv-drag-handle{flex-basis:34px;height:34px}}
 
 .rv-cloud-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:8px 0 14px}.rv-cloud-actions button{white-space:nowrap;padding:9px 13px}.rv-cloud-actions span{font-size:12px;color:var(--muted,#807b94);overflow-wrap:anywhere}.rv-list{margin-top:10px}
+
+/* v1.2.26: Google connect and manual sync inside review account management. */
+.rv-cloud-actions{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:12px;border:1px solid var(--border,#ddd8eb);border-radius:14px;background:var(--panel,#faf9ff)}
+.rv-cloud-buttons{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.rv-cloud-buttons button{min-width:0;flex:1 1 145px;min-height:40px;white-space:normal;text-align:center}
+.rv-cloud-actions #rvCloudInfo{font-size:12px;line-height:1.5}
+.rv-google-state{font-size:12px;color:var(--muted,#807b94)}
+.rv-google-state.connected{color:#23866c}
+@media(max-width:380px){.rv-cloud-buttons{gap:6px}.rv-cloud-buttons button{flex-basis:130px;padding-inline:9px}}
+
+/* v1.2.27: native Client Desk copy pictogram, privacy reveal to its left. */
+.rv-row{grid-template-columns:78px minmax(0,1fr) 36px 36px;gap:6px}
+.rv-row .rv-icon-action{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;min-width:36px;min-height:36px;padding:0;box-sizing:border-box;background:#ece7ff;color:#5949b6;border:1px solid #dfd7ff;border-radius:9px;line-height:1;touch-action:manipulation}
+.rv-row .rv-icon-action svg,.rv-field-action .rv-icon-btn svg{display:block;width:16px;height:16px;flex:none}
+.rv-row .rv-icon-action:focus-visible{outline:2px solid #8369da;outline-offset:2px}
+.rv-row .rv-icon-action:active{transform:scale(.97)}
+.rv-field-action .rv-icon-btn{display:inline-flex;align-items:center;justify-content:center;min-width:39px;min-height:39px;padding:9px}
+html[data-theme='dark'] .rv-row .rv-icon-action{background:#49416a;color:#e6dcff;border-color:#6b5c96}
+@media(max-width:540px){.rv-row{grid-template-columns:54px minmax(0,1fr) 34px 34px;gap:5px}.rv-row .rv-icon-action{width:34px;height:34px;min-width:34px;min-height:34px}.rv-label{font-size:11px}.rv-value{font-size:13px}}

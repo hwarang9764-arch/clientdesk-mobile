@@ -13,6 +13,10 @@
   const fail=(e)=>{console.error('Review account vault:',e);message(e?.message||'처리 중 오류가 발생했습니다.',true);};
   const LOCK_ICON="<svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"5\" y=\"10\" width=\"14\" height=\"11\" rx=\"2\"/><path d=\"M8 10V7a4 4 0 0 1 8 0v3\"/></svg>";
   const GRIP_ICON="<svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"5\" r=\"1.4\"/><circle cx=\"15\" cy=\"5\" r=\"1.4\"/><circle cx=\"9\" cy=\"12\" r=\"1.4\"/><circle cx=\"15\" cy=\"12\" r=\"1.4\"/><circle cx=\"9\" cy=\"19\" r=\"1.4\"/><circle cx=\"15\" cy=\"19\" r=\"1.4\"/></svg>";
+  // Identical copy SVG to the mobile client-management credential button.
+  const RV_COPY_SVG='<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+  const RV_EYE_SVG='<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.1 12s3.7-6 9.9-6 9.9 6 9.9 6-3.7 6-9.9 6-9.9-6-9.9-6Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const RV_EYE_OFF_SVG='<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.7 5.9A10.6 10.6 0 0 1 12 5.8c6.2 0 9.9 6.2 9.9 6.2a16.8 16.8 0 0 1-3.1 3.5"/><path d="M6.1 6.2A16.8 16.8 0 0 0 2.1 12S5.8 18 12 18a10.3 10.3 0 0 0 4.1-.8"/><path d="M10.5 10.5a2.2 2.2 0 0 0 3 3"/><path d="M3 3l18 18"/></svg>';
   const btn=document.createElement('button');btn.type='button';btn.id='rvNav';
   if(isMobile){btn.className='tab rv-tab';btn.innerHTML=`<span aria-hidden="true">${LOCK_ICON}</span><small>리뷰계정</small>`;btn.dataset.view='reviewAccounts';nav.insertBefore(btn,$('tabTrash'));}
   else{btn.className='side-nav';btn.innerHTML=`<span class="nav-icon" aria-hidden="true">${LOCK_ICON}</span><span>리뷰 계정 관리</span>`;const cl=$('navClients');cl.parentNode.insertBefore(btn,cl.nextSibling);}
@@ -20,14 +24,14 @@
   page.className=isMobile?'view rv-page':'main-content rv-page';
   page.innerHTML=`<div class="rv-top"><div><p class="eyebrow">REVIEW ACCOUNT MANAGEMENT</p><h1>리뷰 계정 관리</h1><p class="rv-muted">명의자별 로그인 정보와 인증용 연락처를 관리합니다. 손잡이를 드래그해 순서를 바꿀 수 있습니다.</p></div><button type="button" class="rv-primary" id="rvAdd">+ 계정 추가</button></div>
     <div class="rv-tools"><input id="rvSearch" type="search" placeholder="명의자·ID·휴대폰번호 검색" aria-label="리뷰 계정 검색" autocomplete="off"><span id="rvCount">0건</span></div>
-    <div class="rv-cloud-actions"><button type="button" id="rvCloudSync" class="rv-muted-btn">↻ 리뷰 계정 동기화</button><span id="rvCloudInfo" aria-live="polite">Google Drive 연결 확인 중</span></div><div class="rv-list" id="rvList"></div><p class="rv-privacy">🔒 비밀번호는 기기에 암호화 저장하며 Google Drive에는 암호화된 내용만 전송합니다. 기존 거래처 동기화 PIN과 같은 Google 계정을 사용합니다.</p><p class="rv-status" id="rvStatus" role="status" aria-live="polite"></p>`;
+    <div class="rv-cloud-actions" aria-label="리뷰 계정 Google Drive 연결과 동기화"><div class="rv-cloud-buttons"><button type="button" id="rvGoogleConnect" class="rv-muted-btn">Google 계정 연결</button><button type="button" id="rvCloudSync" class="rv-primary">↻ 지금 동기화</button></div><div class="rv-google-state" id="rvGoogleState" aria-live="polite">Google 연결 확인 중…</div><span id="rvCloudInfo" aria-live="polite">리뷰 계정은 암호화해 Google Drive와 동기화합니다.</span></div><div class="rv-list" id="rvList"></div><p class="rv-privacy">🔒 비밀번호는 기기에 암호화 저장하며 Google Drive에는 암호화된 내용만 전송합니다. 기존 거래처 동기화 PIN과 같은 Google 계정을 사용합니다.</p><p class="rv-status" id="rvStatus" role="status" aria-live="polite"></p>`;
   if(isMobile)mount.insertBefore(page,$('settingsView'));else mount.appendChild(page);
   const modal=document.createElement('dialog');modal.id='rvDialog';modal.className='rv-dialog';
   modal.innerHTML=`<form id="rvForm" autocomplete="off"><div class="rv-modal-heading"><h2 id="rvDialogTitle">리뷰 계정 추가</h2><button type="button" class="rv-close" id="rvClose" aria-label="닫기">×</button></div>
     <div class="rv-body"><label>명의자 <span aria-hidden="true">*</span><input id="rvOwner" maxlength="90" required autocomplete="off" placeholder="명의자 이름"></label>
-    <label>ID <span aria-hidden="true">*</span><div class="rv-field-action"><input id="rvLogin" maxlength="160" required autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="리뷰 관리용 아이디"><button type="button" class="rv-icon-btn" data-fieldcopy="rvLogin" aria-label="ID 복사" title="ID 복사">⧉</button></div></label>
-    <label>PW <span aria-hidden="true">*</span><div class="rv-field-action"><input id="rvPassword" type="password" maxlength="300" required autocomplete="new-password" spellcheck="false" placeholder="비밀번호"><button type="button" class="rv-icon-btn" id="rvReveal" aria-label="비밀번호 보기" title="비밀번호 보기">◉</button><button type="button" class="rv-icon-btn" data-fieldcopy="rvPassword" aria-label="PW 복사" title="PW 복사">⧉</button></div></label>
-    <label>인증용 휴대폰번호<div class="rv-field-action"><input id="rvPhone" type="tel" inputmode="tel" maxlength="40" autocomplete="off" placeholder="010-0000-0000"><button type="button" class="rv-icon-btn" data-fieldcopy="rvPhone" aria-label="휴대폰번호 복사" title="휴대폰번호 복사">⧉</button></div></label></div>
+    <label>ID <span aria-hidden="true">*</span><div class="rv-field-action"><input id="rvLogin" maxlength="160" required autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="리뷰 관리용 아이디"><button type="button" class="rv-icon-btn" data-fieldcopy="rvLogin" aria-label="ID 복사" title="ID 복사">${RV_COPY_SVG}</button></div></label>
+    <label>PW <span aria-hidden="true">*</span><div class="rv-field-action"><input id="rvPassword" type="password" maxlength="300" required autocomplete="new-password" spellcheck="false" placeholder="비밀번호"><button type="button" class="rv-icon-btn" id="rvReveal" aria-label="비밀번호 보기" title="비밀번호 보기">${RV_EYE_SVG}</button><button type="button" class="rv-icon-btn" data-fieldcopy="rvPassword" aria-label="PW 복사" title="PW 복사">${RV_COPY_SVG}</button></div></label>
+    <label>인증용 휴대폰번호<div class="rv-field-action"><input id="rvPhone" type="tel" inputmode="tel" maxlength="40" autocomplete="off" placeholder="010-0000-0000"><button type="button" class="rv-icon-btn" data-fieldcopy="rvPhone" aria-label="휴대폰번호 복사" title="휴대폰번호 복사">${RV_COPY_SVG}</button></div></label></div>
     <div class="rv-actions"><button type="button" id="rvDelete" class="rv-danger" hidden>삭제</button><button type="button" class="rv-muted-btn" id="rvCancel">취소</button><button type="submit" class="rv-primary" id="rvSave">저장하기</button></div></form>`;
   document.body.appendChild(modal);
   function message(t,error=false){const s=$('rvStatus');if(s){s.textContent=t;s.classList.toggle('rv-error',!!error);}}
@@ -44,7 +48,9 @@
       const buffer=await crypto.subtle.decrypt({name:'AES-GCM',iv:from64(stored.iv)},key,from64(stored.cipher));
       const parsed=JSON.parse(new TextDecoder().decode(buffer));if(!Array.isArray(parsed))throw Error('리뷰 계정 데이터에 오류가 있습니다.');items=safeRecords(parsed);
     }
-    render();message('암호화 보관함 준비 완료');queueCloud(1250);
+    render();message('암호화 보관함 준비 완료');
+    if(syncOnVaultReady){syncOnVaultReady=false;syncReviewCloud(true).catch(fail);}
+    else queueCloud(1250);
   }
   async function saveVault(sendToCloud=true){
     if(!db||!key)throw Error('암호화 저장소를 준비하지 못했습니다.');
@@ -55,18 +61,46 @@
   function el(tag,cls,txt){const x=document.createElement(tag);if(cls)x.className=cls;if(txt!==undefined)x.textContent=txt;return x;}
   function action(label,title,fn,kind=''){const b=el('button','rv-action '+kind,label);b.type='button';b.title=title;b.addEventListener('click',fn);return b;}
   async function copy(value,label){if(!value){message('복사할 값이 없습니다.',true);return;}try{await navigator.clipboard.writeText(value);message(label+' 복사 완료');}catch{message('클립보드 접근을 허용해 주세요.',true);}}
+  function iconButton(svg,label,onClick,extra=''){
+    const button=action('',label,onClick,'rv-icon-action '+extra);
+    button.setAttribute('aria-label',label);
+    button.innerHTML=svg;
+    return button;
+  }
+  function reviewField(label,value,maskValue,initiallyVisible=false){
+    const row=el('div','rv-row');
+    const fieldLabel=el('small','rv-label',label);
+    const display=el('span','rv-value',initiallyVisible?value:maskValue);
+    let exposed=initiallyVisible;
+    const visibility=iconButton(exposed?RV_EYE_OFF_SVG:RV_EYE_SVG,`${label} ${exposed?'숨기기':'보기'}`,()=>{
+      exposed=!exposed;
+      display.textContent=exposed?(value||'미등록'):maskValue;
+      visibility.innerHTML=exposed?RV_EYE_OFF_SVG:RV_EYE_SVG;
+      visibility.title=`${label} ${exposed?'숨기기':'보기'}`;
+      visibility.setAttribute('aria-label',visibility.title);
+      visibility.setAttribute('aria-pressed',String(exposed));
+    },'rv-eye-action');
+    visibility.setAttribute('aria-pressed',String(exposed));
+    const copyButton=iconButton(RV_COPY_SVG,`${label} 복사`,()=>copy(value,label),'rv-copy-action');
+    row.append(fieldLabel,display,visibility,copyButton);
+    return row;
+  }
   function render(){const root=$('rvList');if(!root)return;root.replaceChildren();const q=$('rvSearch').value.trim().toLowerCase();const filtered=visibleItems().filter(o=>[o.owner,o.login,o.phone].some(s=>String(s||'').toLowerCase().includes(q)));$('rvCount').textContent=`${filtered.length}건`;
     if(!filtered.length){root.append(el('div','rv-empty',q?'검색 결과가 없습니다.':'저장된 리뷰 계정이 없습니다. + 계정 추가를 눌러주세요.'));return;}
     for(const item of filtered){const card=el('article','rv-card');card.dataset.rvId=item.id;const title=el('div','rv-card-top');const dragHandle=el('button','rv-drag-handle');dragHandle.type='button';dragHandle.innerHTML=GRIP_ICON;dragHandle.title='드래그하여 순서 변경 · 키보드 위아래 화살표 지원';dragHandle.setAttribute('aria-label',item.owner+' 순서 이동');title.append(dragHandle,el('strong','rv-owner',item.owner),action('수정','계정 수정',()=>edit(item.id)));
-      const row=el('div','rv-row');row.append(el('small','rv-label','ID'),el('span','rv-value',item.login),action('⧉','ID 복사',()=>copy(item.login,'ID'),'rv-icon-action'));card.append(title,row);
-      const pw=el('div','rv-row');pw.append(el('small','rv-label','PW'),el('span','rv-value','••••••••'),action('⧉','PW 복사',()=>copy(item.password,'PW'),'rv-icon-action'));card.append(pw);
-      const ph=el('div','rv-row');const masked=item.phone?item.phone.replace(/\d(?=\d{4})/g,'•'):'미등록';ph.append(el('small','rv-label','인증번호'),el('span','rv-value',masked),action('⧉','휴대폰번호 복사',()=>copy(item.phone,'휴대폰번호'),'rv-icon-action'));card.append(ph);root.append(card);
+      card.append(title);
+      card.append(reviewField('ID',item.login,'••••••••',true));
+      card.append(reviewField('PW',item.password,'••••••••'));
+      const masked=item.phone?item.phone.replace(/\d(?=\d{4})/g,'•'):'미등록';
+      card.append(reviewField('인증번호',item.phone,masked));
+      root.append(card);
     }
   }
-  function edit(id=null){if(!key){message('암호화 저장소를 준비 중입니다.',true);return;}activeId=id;const item=items.find(x=>x.id===id&&!x.deletedAt)||{};$('rvDialogTitle').textContent=id?'리뷰 계정 수정':'리뷰 계정 추가';$('rvOwner').value=item.owner||'';$('rvLogin').value=item.login||'';$('rvPassword').value=item.password||'';$('rvPhone').value=item.phone||'';$('rvPassword').type='password';$('rvDelete').hidden=!id;modal.showModal();}
+  function edit(id=null){if(!key){message('암호화 저장소를 준비 중입니다.',true);return;}activeId=id;const item=items.find(x=>x.id===id&&!x.deletedAt)||{};$('rvDialogTitle').textContent=id?'리뷰 계정 수정':'리뷰 계정 추가';$('rvOwner').value=item.owner||'';$('rvLogin').value=item.login||'';$('rvPassword').value=item.password||'';$('rvPhone').value=item.phone||'';$('rvPassword').type='password';$('rvReveal').innerHTML=RV_EYE_SVG;$('rvReveal').setAttribute('aria-label','비밀번호 보기');$('rvReveal').setAttribute('aria-pressed','false');$('rvDelete').hidden=!id;modal.showModal();}
   const reviewLastKey='wwtt_mobile_review_last_view_v1';
   function openPage(){
     if(isMobile)try{localStorage.setItem(reviewLastKey,'reviewAccounts');}catch{}
+    if(isMobile)updateReviewGoogleUI();
     if(isMobile){for(const section of document.querySelectorAll('.app-shell > main > .view'))section.hidden=section!==page;document.querySelectorAll('.bottom-nav .tab').forEach(tab=>tab.classList.toggle('active',tab===btn));document.body.classList.remove('cd-calendar-visible');}
     else {for(const node of mount.children)if(node.classList?.contains('main-content'))node.hidden=node!==page;document.querySelectorAll('.side-nav').forEach(b=>b.classList.toggle('active',b===btn));}
     page.hidden=false;render();
@@ -143,7 +177,7 @@
   const REVIEW_CLOUD_APP='clientdesk-review-accounts';
   const REVIEW_CLOUD_API='https://www.googleapis.com/drive/v3/files';
   const REVIEW_CLOUD_UPLOAD='https://www.googleapis.com/upload/drive/v3/files';
-  let cloudBusy=false,cloudPending=false,cloudTimer=0,cloudLast=0,changeCounter=0;
+  let cloudBusy=false,cloudPending=false,cloudTimer=0,cloudLast=0,changeCounter=0,syncOnVaultReady=false;
   const encoder=new TextEncoder(),b64of=arr=>b64(arr),fromB64=str=>from64(str);
   const timeMs=value=>{const t=Date.parse(value||'');return Number.isFinite(t)?t:0;};
   function visibleItems(){return items.filter(x=>!x.deletedAt);}
@@ -168,7 +202,7 @@
     }
     return Array.from(map.values()).sort((x,y)=>x.order-y.order||x.id.localeCompare(y.id));
   }
-  function cloudMessage(t,error=false){message(t,error);const info=$('rvCloudInfo');if(info)info.textContent=t;}
+  function cloudMessage(t,error=false){message(t,error);const info=$('rvCloudInfo');if(info)info.textContent=t;updateReviewGoogleUI();}
   function queueCloud(delay=700){clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>syncReviewCloud(false).catch(e=>cloudMessage('이 기기에 보관됨 · '+e.message,true)),delay);}
   async function googleToken(){
     let tok=window.ClientDeskCategorySync?.getAccessToken?.()||'';
@@ -257,7 +291,7 @@
     }
   }
   async function syncReviewCloud(interactive=false){
-    if(!key||!db)return;
+    if(!key||!db){if(interactive){syncOnVaultReady=true;cloudMessage('암호화 보관함 준비 후 자동으로 동기화합니다.');}return;}
     if(modal.open){cloudMessage('계정 수정 중 · 저장을 마친 뒤 동기화합니다.');return;}
     if(cloudBusy){cloudPending=true;return;}
     cloudBusy=true;cloudMessage('리뷰 계정 암호화 동기화 중…');
@@ -293,7 +327,50 @@
     }catch(e){cloudMessage('로컬 계정 유지 · '+e.message,true);if(interactive)console.warn('Review sync failed',e);}
     finally{cloudBusy=false;if(cloudPending){cloudPending=false;queueCloud(1300);}}
   }
-  $('rvCloudSync').addEventListener('click',()=>syncReviewCloud(true));
+  // The original CRM OAuth button is the single source of truth for Google
+  // authentication. Never create a second OAuth client or store access tokens.
+  // Reuse the user's existing Google Calendar / Drive connection flow.
+  let syncAfterGoogleConnect=false;
+  let connectAttemptTimer=0;
+  const hasReviewToken=()=>!!window.ClientDeskCategorySync?.getAccessToken?.();
+  function updateReviewGoogleUI(){
+    if(!isMobile)return;
+    const linked=hasReviewToken();
+    const state=$('rvGoogleState');
+    if(state){state.textContent=linked?'● Google 계정 연결됨':'○ Google 계정 연결 필요';state.classList.toggle('connected',linked);}
+    const button=$('rvGoogleConnect');
+    if(button)button.textContent=linked?'Google 다시 연결':'Google 계정 연결';
+  }
+  function connectGoogleAndSync(){
+    const original=$('connectGoogle');
+    if(!original){cloudMessage('설정 화면의 Google 연결 기능을 찾지 못했습니다.',true);return;}
+    if(syncAfterGoogleConnect){cloudMessage('Google 계정 승인 창을 먼저 확인해 주세요.');return;}
+    syncAfterGoogleConnect=true;
+    clearTimeout(connectAttemptTimer);
+    connectAttemptTimer=setTimeout(()=>{if(syncAfterGoogleConnect){syncAfterGoogleConnect=false;cloudMessage('Google 연결을 완료하지 못했습니다. 다시 시도해 주세요.',true);}},120000);
+    cloudMessage('Google 로그인 창에서 연결을 승인해 주세요. 완료 후 리뷰 계정을 자동 동기화합니다.');
+    // Executed synchronously on a real click, preserving the browser popup gesture.
+    original.click();
+  }
+  function runReviewSync(){
+    if(!hasReviewToken()){
+      connectGoogleAndSync();
+      return;
+    }
+    syncReviewCloud(true).catch(e=>cloudMessage(e.message,true));
+  }
+  $('rvGoogleConnect').addEventListener('click',connectGoogleAndSync);
+  $('rvCloudSync').addEventListener('click',runReviewSync);
+  window.addEventListener('clientdesk-google-token-observed',()=>{
+    updateReviewGoogleUI();
+    if(!syncAfterGoogleConnect)return;
+    syncAfterGoogleConnect=false;
+    clearTimeout(connectAttemptTimer);
+    syncReviewCloud(true).catch(e=>cloudMessage(e.message,true));
+  });
+  updateReviewGoogleUI();
+  window.addEventListener('focus',updateReviewGoogleUI);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateReviewGoogleUI();});
   modal.addEventListener('close',()=>queueCloud(400));
   window.addEventListener('focus',()=>{if(Date.now()-cloudLast>45000)queueCloud(600);});
   window.addEventListener('online',()=>queueCloud(600));
@@ -303,7 +380,7 @@
   $('rvAdd').addEventListener('click',()=>edit());$('rvSearch').addEventListener('input',render);
   $('rvClose').addEventListener('click',()=>modal.close());$('rvCancel').addEventListener('click',()=>modal.close());
   modal.addEventListener('click',e=>{if(e.target===modal)modal.close();});
-  $('rvReveal').addEventListener('click',()=>{const field=$('rvPassword');field.type=field.type==='password'?'text':'password';$('rvReveal').setAttribute('aria-label',field.type==='password'?'비밀번호 보기':'비밀번호 숨기기');});
+  $('rvReveal').addEventListener('click',()=>{const field=$('rvPassword'),button=$('rvReveal');field.type=field.type==='password'?'text':'password';const exposed=field.type==='text';button.innerHTML=exposed?RV_EYE_OFF_SVG:RV_EYE_SVG;button.setAttribute('aria-label',exposed?'비밀번호 숨기기':'비밀번호 보기');button.title=button.getAttribute('aria-label');button.setAttribute('aria-pressed',String(exposed));});
   modal.addEventListener('click',event=>{const b=event.target.closest('[data-fieldcopy]');if(b){const field=$(b.dataset.fieldcopy);copy(field?.value||'',field?.id==='rvPassword'?'PW':field?.id==='rvPhone'?'휴대폰번호':'ID');}});
   $('rvForm').addEventListener('submit',async e=>{e.preventDefault();if(busy)return;busy=true;$('rvSave').disabled=true;
     const entry={id:activeId||unique(),owner:$('rvOwner').value.trim(),login:$('rvLogin').value.trim(),password:$('rvPassword').value,phone:$('rvPhone').value.trim(),updatedAt:new Date().toISOString()};
