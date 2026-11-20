@@ -146,3 +146,12 @@
 .cd-type-row .cd-type-drag{flex:0 0 30px;touch-action:none;cursor:grab;border:0;background:transparent;color:#8b80a6;font-size:19px;line-height:1;padding:4px 2px;user-select:none;}
 .cd-type-row.cd-type-dragging{opacity:.55;outline:2px dashed #8171d4;outline-offset:2px;}
 @media(max-width:520px){.cd-type-row{grid-template-columns:27px 14px minmax(0,1fr) 45px 40px 30px!important;gap:5px!important;}.cd-type-row .cd-type-drag{width:26px;min-width:0;}}
+
+/* v1.2.29: completion action matches all four sides of its own event card.
+   The palette bridge sets these variables per card, so blue/purple/custom
+   colours update automatically without changing event completion behaviour. */
+#dayEvents .event-card[data-cd28-colored="1"] button.cd29-event-complete{
+  border:2px solid color-mix(in srgb,var(--cd-event-fg) 65%,var(--cd-event-bg))!important;
+  box-shadow:none!important;
+  outline:0!important;
+}

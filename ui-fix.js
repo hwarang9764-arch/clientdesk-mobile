@@ -1,4 +1,4 @@
-/* Client Desk Mobile v1.2.28: view-only refinements. Core application and sync are untouched. */
+/* Client Desk Mobile v1.2.29: view-only refinements. Core application and sync are untouched. */
 (()=>{
   'use strict';
   const COPY_SVG='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
@@ -42,11 +42,31 @@
     alignCardActions();
   }
 
+  // A completed calendar event used to get a green border on its action
+  // button even when the event card itself was blue, violet, etc. Keep the
+  // original button (and click listener) and only give it a styling hook.
+  const dayEvents=document.getElementById('dayEvents');
+  if(dayEvents){
+    const matchDoneButtons=()=>{
+      for(const card of dayEvents.querySelectorAll('.event-card')){
+        for(const button of card.querySelectorAll('button')){
+          if(/완료(?:\s*취소)?/.test((button.textContent||'').replace(/\s+/g,' '))){
+            button.classList.add('cd29-event-complete');
+          }
+        }
+      }
+    };
+    new MutationObserver(matchDoneButtons).observe(dayEvents,{
+      childList:true,characterData:true,subtree:true
+    });
+    matchDoneButtons();
+  }
+
   // UI version matches the released visual patch; core sync schema remains unchanged.
   const version=document.getElementById('appVersion');
   if(version){
     const showVersion=()=>{
-      if(version.textContent!=='1.2.28')version.textContent='1.2.28';
+      if(version.textContent!=='1.2.29')version.textContent='1.2.29';
     };
     new MutationObserver(showVersion).observe(version,{childList:true,characterData:true,subtree:true});
     showVersion();
